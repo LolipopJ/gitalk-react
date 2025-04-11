@@ -1,0 +1,66 @@
+{
+  "name": "gitalk-react",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/gitalk.umd.cjs",
+  "module": "./dist/gitalk.js",
+  "exports": {
+    ".": {
+      "import": "./dist/gitalk.js",
+      "require": "./dist/gitalk.umd.cjs"
+    },
+    "./gitalk.css": "./dist/gitalk-light.css",
+    "./gitalk-light.css": "./dist/gitalk-light.css",
+    "./gitalk-dark.css": "./dist/gitalk-dark.css",
+    "./gitalk.scss": "./lib/themes/gitalk-light.scss",
+    "./gitalk-light.scss": "./lib/themes/gitalk-light.scss",
+    "./gitalk-dark.scss": "./lib/themes/gitalk-dark.scss"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run build:tsx && npm run build:scss",
+    "build:tsx": "tsc -b && vite build",
+    "build:scss": "vite build --config vite.config.scss.ts",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "github-markdown-css": "*",
+    "i18next": "^24.0.0",
+    "octokit": "^4.0.0",
+    "react-flip-move": "^3.0.0",
+    "react-i18next": "^15.0.0"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "@types/node": "^22.14.1",
+    "@types/react": "^16.8.0",
+    "@types/react-dom": "^16.8.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.24.0",
+    "eslint-config-prettier": "^10.1.2",
+    "eslint-plugin-prettier": "^5.2.6",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "globals": "^16.0.0",
+    "prettier": "^3.5.3",
+    "react": "^16.8.0",
+    "react-dom": "^16.8.0",
+    "rollup-plugin-visualizer": "^5.14.0",
+    "sass-embedded": "^1.86.3",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.29.1",
+    "vite": "^6.2.6",
+    "vite-plugin-dts": "^4.5.3"
+  }
+}
