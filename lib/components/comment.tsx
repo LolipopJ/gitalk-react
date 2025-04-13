@@ -5,14 +5,15 @@ import Heart from "../assets/heart.svg?raw";
 import HeartFilled from "../assets/heart-filled.svg?raw";
 import Reply from "../assets/reply.svg?raw";
 import { GitalkProps } from "../gitalk";
+import type { Comment as CommentType, User } from "../interfaces";
 import Avatar from "./avatar";
 import Svg from "./svg";
 
 export interface CommentProps
   extends Pick<GitalkProps, "admin" | "language">,
     React.HTMLAttributes<HTMLDivElement> {
-  comment: any;
-  user: any;
+  comment: CommentType;
+  user: User;
   repliedText?: string;
   onLike?: (like: boolean) => void;
   onReply?: (comment: string) => void;

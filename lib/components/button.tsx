@@ -2,12 +2,12 @@ import React from "react";
 
 export interface ButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
   text: string;
-  isLoading: boolean;
+  isLoading?: boolean;
 }
 
 const Button: React.FC<ButtonProps> = ({
   text,
-  isLoading,
+  isLoading = false,
   className,
   ...restProps
 }) => (

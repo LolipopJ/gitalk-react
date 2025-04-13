@@ -4,15 +4,23 @@ class Logger {
   i(...infos: unknown[]) {
     console.info(
       `${this.prefix} [INFO] `,
-      "color:#333 ;background-color: #fff;",
+      "color:#111 ;background-color: #f9fafb;",
       ...infos,
+    );
+  }
+
+  s(...successes: unknown[]) {
+    console.info(
+      `${this.prefix} [INFO] `,
+      "color:#111 ;background-color: #84cc16;",
+      ...successes,
     );
   }
 
   w(...warnings: unknown[]) {
     console.warn(
       `${this.prefix} [WARNING] `,
-      "color:#111 ;background-color:#ffa500;",
+      "color:#eee ;background-color:#c2410c;",
       ...warnings,
     );
   }
@@ -20,7 +28,7 @@ class Logger {
   e(...errors: unknown[]) {
     console.error(
       `${this.prefix} [ERROR] `,
-      "color:#111 ;background-color:#ff0000;",
+      "color:#eee ;background-color:#dc2626;",
       ...errors,
     );
   }
