@@ -1,0 +1,608 @@
+@function em($px, $base-size: $gt-size-base) {
+  @return calc($px / $base-size * 1em);
+}
+
+@mixin clearfix() {
+  &::before,
+  &::after {
+    display: table;
+    content: '';
+  }
+
+  &::after {
+    clear: both;
+  }
+}
+
+@mixin mobile() {
+  @media (max-width: $gt-breakpoint-mobile) {
+    @content;
+  }
+}
+
+@keyframes gt-kf-rotate {
+  0% {
+    transform: rotate(0);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+$gt-size-base: 16px;
+$gt-size-border-radius: em(5px);
+$gt-size-loader-dot: em(6px);
+$gt-size-loader: em(28px);
+$gt-size-avatar: em(50px);
+$gt-size-avatar-mobi: em(32px);
+$gt-mask-z-index: 9999;
+$gt-breakpoint-mobile: 479px;
+
+.gt-container {
+  box-sizing: border-box;
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-size: $gt-size-base;
+  font-weight: 400;
+  line-height: 1.5;
+  font-synthesis: none;
+  text-rendering: optimizelegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  * {
+    box-sizing: border-box;
+  }
+
+  a {
+    color: var(--gt-color-main);
+
+    &:hover {
+      color: var(--gt-color-main-lighter);
+      border-color: var(--gt-color-main-lighter);
+    }
+
+    &.is--active {
+      color: var(--gt-color-link-active);
+      cursor: default !important;
+
+      &:hover {
+        color: var(--gt-color-link-active);
+      }
+    }
+  }
+
+  .hide {
+    display: none !important;
+  }
+
+  .gt {
+    &-svg {
+      display: inline-block;
+      width: em(16px);
+      height: em(16px);
+      vertical-align: sub;
+
+      svg {
+        width: 100%;
+        height: 100%;
+        fill: var(--gt-color-main);
+      }
+    }
+
+    &-ico {
+      display: inline-block;
+
+      &-text {
+        margin-left: em(5px);
+      }
+
+      &-github {
+        width: 100%;
+        height: 100%;
+
+        .gt-svg {
+          width: 100%;
+          height: 100%;
+        }
+
+        svg {
+          fill: inherit;
+        }
+      }
+    }
+
+    &-spinner {
+      position: relative;
+
+      &::before {
+        position: absolute;
+        top: em(3px);
+        box-sizing: border-box;
+        width: em(12px);
+        height: em(12px);
+        margin-top: em(-3px);
+        margin-left: em(-6px);
+        content: '';
+        border: 1px solid var(--gt-color-btn);
+        border-top-color: var(--gt-color-main);
+        border-radius: 50%;
+        animation: gt-kf-rotate 0.6s linear infinite;
+      }
+    }
+
+    &-loader {
+      position: relative;
+      display: inline-block;
+      width: $gt-size-loader;
+      height: $gt-size-loader;
+      font-style: normal;
+      line-height: $gt-size-loader;
+      border: 1px solid var(--gt-color-loader);
+      border-radius: 50%;
+      animation: ease gt-kf-rotate 1.5s infinite;
+
+      &::before {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        display: block;
+        width: $gt-size-loader-dot;
+        height: $gt-size-loader-dot;
+        margin-top: -(calc($gt-size-loader-dot / 2));
+        margin-left: -(calc($gt-size-loader-dot / 2));
+        content: '';
+        background-color: var(--gt-color-loader);
+        border-radius: 50%;
+      }
+    }
+
+    &-avatar {
+      display: inline-block;
+      width: $gt-size-avatar;
+      height: $gt-size-avatar;
+
+      @include mobile {
+        width: $gt-size-avatar-mobi;
+        height: $gt-size-avatar-mobi;
+      }
+
+      img {
+        width: 100%;
+        height: auto;
+        border-radius: em(3px);
+      }
+
+      &-github {
+        width: $gt-size-avatar - em(2px);
+        height: $gt-size-avatar - em(2px);
+        cursor: pointer;
+
+        @include mobile {
+          width: $gt-size-avatar-mobi - em(2px);
+          height: $gt-size-avatar-mobi - em(2px);
+        }
+      }
+    }
+
+    &-btn {
+      display: inline-block;
+      padding: em(12px) em(20px);
+      font-size: em(12px);
+      line-height: 1;
+      color: var(--gt-color-btn);
+      white-space: nowrap;
+      text-decoration: none;
+      cursor: pointer;
+      outline: none;
+      background-color: var(--gt-color-main);
+      border: 1px solid var(--gt-color-main);
+      border-radius: $gt-size-border-radius;
+
+      &-text {
+        font-weight: 400;
+      }
+
+      &-loading {
+        position: relative;
+        display: inline-block;
+        width: em(12px);
+        height: em(16px);
+        margin-left: em(8px);
+        vertical-align: top;
+      }
+
+      &.is--disable {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      &-login {
+        margin-right: 0;
+      }
+
+      &-preview {
+        color: var(--gt-color-main);
+        background-color: var(--gt-color-btn);
+
+        &:hover {
+          background-color: var(--gt-color-btn-darker);
+          border-color: var(--gt-color-main-lighter);
+        }
+      }
+
+      &-public {
+        &:hover {
+          background-color: var(--gt-color-main-lighter);
+          border-color: var(--gt-color-main-lighter);
+        }
+      }
+
+      // &-loadmore {
+      // }
+    }
+
+    &-error {
+      margin: em(10px);
+      color: var(--gt-color-error);
+      text-align: center;
+    }
+
+    &-initing {
+      padding: em(20px) 0;
+      text-align: center;
+
+      &-text {
+        margin: em(10px) auto;
+        font-size: 92%;
+      }
+    }
+
+    &-no-init {
+      padding: em(20px) 0;
+      text-align: center;
+    }
+
+    &-link {
+      border-bottom: 1px dotted var(--gt-color-main);
+
+      &-counts,
+      &-project {
+        text-decoration: none;
+      }
+    }
+
+    &-meta {
+      position: relative;
+      z-index: 10;
+      padding: em(16px) 0;
+      margin: em(20px) 0;
+      font-size: em(16px);
+      border-bottom: 1px solid var(--gt-color-hr);
+
+      @include clearfix;
+    }
+
+    &-counts {
+      margin: 0 em(10px) 0 0;
+    }
+
+    &-user {
+      float: right;
+      margin: 0;
+      font-size: 92%;
+
+      &-pic {
+        width: em(16px);
+        height: em(16px);
+        margin-right: em(8px);
+        vertical-align: top;
+      }
+
+      &-inner {
+        display: inline-block;
+        cursor: pointer;
+      }
+
+      .gt-ico {
+        margin: 0 0 0 em(5px);
+
+        svg {
+          fill: inherit;
+        }
+      }
+
+      .is--poping {
+        .gt-ico {
+          svg {
+            fill: var(--gt-color-main);
+          }
+        }
+      }
+    }
+
+    &-version {
+      margin-left: em(6px);
+      color: var(--gt-color-sub);
+    }
+
+    &-copyright {
+      padding-top: em(8px);
+      margin: 0 em(15px) em(8px);
+      border-top: 1px solid var(--gt-color-hr);
+    }
+
+    &-popup {
+      position: absolute;
+      top: em(38px);
+      right: 0;
+      display: inline-block;
+      padding: em(10px) 0;
+      font-size: em(14px);
+      letter-spacing: 0.5px;
+      background: var(--gt-color-popbg);
+      border: 1px solid var(--gt-color-hr);
+
+      .gt-action {
+        position: relative;
+        display: block;
+        padding: 0 em(18px);
+        margin: em(8px) 0;
+        text-decoration: none;
+        cursor: pointer;
+
+        &.is--active {
+          &::before {
+            position: absolute;
+            top: em(7px);
+            left: em(8px);
+            width: em(4px);
+            height: em(4px);
+            content: '';
+            background: var(--gt-color-main);
+          }
+        }
+      }
+    }
+
+    &-header {
+      position: relative;
+      display: flex;
+
+      &-comment {
+        flex: 1;
+        margin-left: em(20px);
+
+        @include mobile {
+          margin-left: em(14px);
+        }
+      }
+
+      &-textarea {
+        box-sizing: border-box;
+        display: block;
+        width: 100%;
+        min-height: em(82px);
+        max-height: em(240px);
+        padding: em(12px);
+        font-size: em(14px);
+        word-wrap: break-word;
+        resize: vertical;
+        outline: none;
+        background-color: var(--gt-color-input-bg);
+        border: 1px solid var(--gt-color-input-border);
+        border-radius: $gt-size-border-radius;
+        transition: all 0.25s ease;
+
+        &:hover {
+          background-color: var(--gt-color-input-bg-lighter);
+        }
+      }
+
+      &-preview {
+        padding: em(12px);
+        background-color: var(--gt-color-input-bg);
+        border: 1px solid var(--gt-color-input-border);
+        border-radius: $gt-size-border-radius;
+      }
+
+      &-controls {
+        position: relative;
+        margin: em(12px) 0 0;
+
+        @include clearfix;
+
+        @include mobile {
+          margin: 0;
+        }
+
+        &-tip {
+          font-size: em(14px);
+          vertical-align: sub;
+          color: var(--gt-color-main);
+          text-decoration: none;
+
+          @include mobile {
+            display: none;
+          }
+        }
+
+        .gt-btn {
+          float: right;
+          margin-left: em(20px);
+
+          @include mobile {
+            float: none;
+            width: 100%;
+            margin: em(12px) 0 0;
+          }
+        }
+      }
+    }
+
+    &-comments {
+      padding-top: em(20px);
+
+      &-null {
+        text-align: center;
+      }
+
+      &-controls {
+        margin: em(20px) 0;
+        text-align: center;
+      }
+    }
+
+    &-comment {
+      position: relative;
+      display: flex;
+      padding: em(10px) 0;
+
+      &-content {
+        flex: 1;
+        padding: em(12px) em(16px);
+        margin-left: em(20px);
+        overflow: auto;
+        background-color: var(--gt-color-comment-bg);
+        transition: all ease 0.25s;
+
+        &:hover {
+          box-shadow: 0 em(10px) em(60px) 0 var(--gt-color-comment-bg-darker);
+        }
+
+        @include mobile {
+          padding: em(10px) em(12px);
+          margin-left: em(14px);
+        }
+      }
+
+      &-header {
+        position: relative;
+        margin-bottom: em(8px);
+        font-size: em(14px);
+      }
+
+      &-block-1 {
+        float: right;
+        width: em(32px);
+        height: em(22px);
+      }
+
+      &-block-2 {
+        float: right;
+        width: em(64px);
+        height: em(22px);
+      }
+
+      &-username {
+        font-weight: 500;
+        color: var(--gt-color-main);
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+
+      &-text {
+        margin-left: em(8px);
+        color: var(--gt-color-sub);
+      }
+
+      &-date {
+        margin-left: em(8px);
+        color: var(--gt-color-sub);
+      }
+
+      &-like {
+        top: 0;
+        right: em(32px);
+      }
+
+      &-edit,
+      &-reply {
+        top: 0;
+        right: 0;
+      }
+
+      &-like,
+      &-edit,
+      &-reply {
+        position: absolute;
+        height: em(22px);
+
+        &:hover {
+          cursor: pointer;
+        }
+      }
+
+      &-body {
+        color: var(--gt-color-comment-txt) !important;
+
+        .email-hidden-toggle a {
+          display: inline-block;
+          height: em(12px);
+          padding: 0 em(9px);
+          font-size: em(12px);
+          font-weight: 600;
+          line-height: em(6px);
+          vertical-align: middle;
+          color: #444d56;
+          text-decoration: none;
+          background: #dfe2e5;
+          border-radius: 1px;
+
+          &:hover {
+            background-color: #c6cbd1;
+          }
+        }
+
+        .email-hidden-reply {
+          display: none;
+          white-space: pre-wrap;
+
+          &.expanded {
+            display: block;
+          }
+
+          .email-signature-reply {
+            padding: 0 em(15px);
+            margin: em(15px) 0;
+            color: #586069;
+            border-left: em(4px) solid #dfe2e5;
+          }
+        }
+      }
+
+      &-admin {
+        .gt-comment-content {
+          background-color: var(--gt-color-comment-adminbg);
+        }
+      }
+    }
+  }
+
+  &::after {
+    position: fixed;
+    inset: 0 0 100%;
+    content: '';
+    opacity: 0;
+  }
+
+  &.gt-input-focused {
+    position: relative;
+
+    &::after {
+      z-index: $gt-mask-z-index;
+      background: #000;
+      opacity: 0.6;
+      transition:
+        opacity 0.3s,
+        bottom 0s;
+    }
+
+    .gt-header-comment {
+      z-index: $gt-mask-z-index + 1;
+    }
+  }
+}

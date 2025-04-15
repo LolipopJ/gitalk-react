@@ -4,9 +4,11 @@
 
 面向现代浏览器开发，专注于减少构建包的体积，提升使用体验。
 
-## 兼容性
+## 与原版的区别
 
-兼容支持 [ES2020](https://caniuse.com/?feats=mdn-javascript_operators_optional_chaining,mdn-javascript_operators_nullish_coalescing,mdn-javascript_builtins_globalthis,es6-module-dynamic-import,bigint,mdn-javascript_builtins_promise_allsettled,mdn-javascript_builtins_string_matchall,mdn-javascript_statements_export_namespace,mdn-javascript_operators_import_meta) 的现代浏览器。
+- 不兼容旧浏览器，仅保证兼容支持 [ES2020](https://caniuse.com/?feats=mdn-javascript_operators_optional_chaining,mdn-javascript_operators_nullish_coalescing,mdn-javascript_builtins_globalthis,es6-module-dynamic-import,bigint,mdn-javascript_builtins_promise_allsettled,mdn-javascript_builtins_string_matchall,mdn-javascript_statements_export_namespace,mdn-javascript_operators_import_meta) 的现代浏览器。
+- 依赖 React 运行时环境：`react >= 16.8.0 && react-dom >= 16.8.0`。
+- 使用 `.scss` 作为样式预处理器，而非 `.styl`。
 
 ## 开发
 

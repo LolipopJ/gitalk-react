@@ -22,10 +22,12 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:tsx && npm run build:scss",
-    "build:tsx": "tsc -b && vite build",
+    "build": "npm run build:ts && npm run build:scss",
+    "build:ts": "tsc -b && vite build",
     "build:scss": "vite build --config vite.config.scss.ts",
-    "lint": "eslint .",
+    "lint": "npm run lint:ts && npm run lint:scss",
+    "lint:ts": "eslint .",
+    "lint:scss": "stylelint lib/**/*.scss",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -61,6 +63,9 @@
     "react-dom": "^16.8.0",
     "rollup-plugin-visualizer": "^5.14.0",
     "sass-embedded": "^1.86.3",
+    "stylelint": "^16.18.0",
+    "stylelint-config-recess-order": "^6.0.0",
+    "stylelint-config-standard-scss": "^14.0.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.29.1",
     "vite": "^6.2.6",

@@ -1,6 +1,24 @@
-@use './_base.scss';
-@import 'github-markdown-css/github-markdown-light.css';
+@use 'sass:color';
+@use './base';
+@import 'github-markdown-css/github-markdown-dark.css';
 
 :root {
   --gt-theme-mode: dark;
+  --gt-color-main: #6190e8;
+  --gt-color-main-lighter: color.adjust(#6190e8, 20%);
+  --gt-color-sub: #a1a1a1;
+  --gt-color-loader: #999;
+  --gt-color-error: #ff3860;
+  --gt-color-hr: #e9e9e9;
+  --gt-color-input-border: rgb(0 0 0 / 10%);
+  --gt-color-input-bg: #f6f6f6;
+  --gt-color-input-bg-lighter: color.adjust(#f6f6f6, 50%);
+  --gt-color-comment-bg: #f9f9f9;
+  --gt-color-comment-bg-darker: color.adjust(#f9f9f9, -2%);
+  --gt-color-comment-adminbg: #f6f9fe;
+  --gt-color-comment-txt: #333;
+  --gt-color-link-active: #333;
+  --gt-color-btn: #fff;
+  --gt-color-btn-darker: color.adjust(#fff, -5%);
+  --gt-color-popbg: #fff;
 }
