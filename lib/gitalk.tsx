@@ -1,7 +1,6 @@
 import "./i18n";
 
 import { useRequest } from "ahooks";
-import { Octokit } from "octokit";
 import React, {
   forwardRef,
   useCallback,
@@ -38,6 +37,7 @@ import {
   getIssueCommentsQL,
   type IssueCommentsQLResponse,
 } from "./services/graphql/comment";
+import getOctokitInstance from "./services/request";
 import { getAccessToken, getAuthorizeUrl } from "./services/user";
 import { supportsCSSVariables, supportsES2020 } from "./utils/compatibility";
 import { hasClassInParent } from "./utils/dom";
@@ -291,17 +291,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     }
   }, [accessToken, runGetAccessToken]);
 
-  const octokit = useMemo(
-    () =>
-      new Octokit(
-        accessToken
-          ? {
-              auth: accessToken,
-            }
-          : {},
-      ),
-    [accessToken],
-  );
+  const octokit = useMemo(() => getOctokitInstance(accessToken), [accessToken]);
 
   const {
     data: user,
@@ -499,6 +489,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
               (comment) => {
                 return {
                   ...comment,
+                  id: comment.databaseId,
                   user: {
                     ...defaultUser,
                     avatar_url: comment.author.avatarUrl,
@@ -766,13 +757,15 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           const newHeartNodes = like
             ? prevHeartNodes.concat([
                 {
-                  id: createdReactionId,
+                  databaseId: createdReactionId,
                   user: {
                     login: username,
                   },
                 },
               ])
-            : prevHeartNodes.filter((node) => node.id !== deletedReactionId);
+            : prevHeartNodes.filter(
+                (node) => node.databaseId !== deletedReactionId,
+              );
 
           targetComment.reactions = {
             heart: newHeartCount,
@@ -1072,7 +1065,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       );
     const heartReactionId = commentReactionsHeart?.nodes.find(
       (node) => node.user.login === user?.login,
-    )?.id;
+    )?.databaseId;
 
     return (
       <div ref={ref}>

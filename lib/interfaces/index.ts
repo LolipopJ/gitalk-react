@@ -21,7 +21,7 @@ export type Comment = Pick<
     totalCount: number;
     viewerHasReacted: boolean;
     nodes: {
-      id: number;
+      databaseId: number;
       user: {
         login: string;
       };

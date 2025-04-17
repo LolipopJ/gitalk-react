@@ -12,7 +12,8 @@ export interface IssueCommentsQLResponse {
           startCursor?: string;
           endCursor?: string;
         };
-        nodes: (Pick<Comment, "id" | "body"> & {
+        nodes: (Pick<Comment, "body"> & {
+          databaseId: Comment["id"];
           author: {
             avatarUrl: Comment["user"]["avatar_url"];
             login: Comment["user"]["login"];
@@ -52,7 +53,7 @@ export const getIssueCommentsQL = ({
             ${cursorDirection === "before" ? "startCursor" : "endCursor"}
           }
           nodes {
-            id
+            databaseId
             author {
               avatarUrl
               login
@@ -69,7 +70,7 @@ export const getIssueCommentsQL = ({
                 hasNextPage
               }
               nodes {
-                id
+                databaseId
                 user {
                   login
                 }

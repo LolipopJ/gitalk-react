@@ -2,12 +2,12 @@ import "../lib/themes/gitalk-light.scss";
 
 // import "../lib/themes/gitalk-dark.scss";
 import { useRequest } from "ahooks";
-import { Octokit } from "octokit";
 import { useState } from "react";
 
 import { ACCESS_TOKEN_KEY } from "../lib/constants";
 import Gitalk from "../lib/gitalk";
 import { Issue } from "../lib/interfaces";
+import getOctokitInstance from "../lib/services/request";
 import logger from "../lib/utils/logger";
 
 const {
@@ -29,19 +29,14 @@ const App = () => {
 
   const [issueNumber, setIssueNumber] = useState<number>();
 
+  const octokit = getOctokitInstance(
+    localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined,
+  );
+
   const { loading: getIssuesLoading } = useRequest<void, [number]>(
     async () => {
       const from = (issuesPage - 1) * PER_PAGE + 1;
       const to = issuesPage * PER_PAGE;
-
-      const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-      const octokit = new Octokit(
-        accessToken
-          ? {
-              auth: accessToken,
-            }
-          : {},
-      );
 
       const getIssuesRes = await octokit.request(
         "GET /repos/{owner}/{repo}/issues",
