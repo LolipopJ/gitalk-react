@@ -5,7 +5,12 @@ export interface SVGProps extends React.HTMLAttributes<HTMLSpanElement> {
   text?: string;
 }
 
-const Svg: React.FC<SVGProps> = ({ icon, text, className, ...restProps }) => (
+const Svg: React.FC<SVGProps> = ({
+  icon,
+  text,
+  className = "",
+  ...restProps
+}) => (
   <span className={`gt-ico ${className}`} {...restProps}>
     <span
       className="gt-svg"

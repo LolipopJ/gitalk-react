@@ -1,5 +1,4 @@
 import { stringifySearchQuery } from "../utils/query";
-import { getOctokitInstance } from "./request";
 
 export const getAuthorizeUrl = (clientID: string) => {
   const query = {
@@ -38,9 +37,4 @@ export const getAccessToken = async ({
   const { access_token } = resData;
 
   return access_token as string;
-};
-
-export const getUser = async (accessToken?: string) => {
-  const octokit = getOctokitInstance(accessToken);
-  return await octokit.request("GET /user");
 };

@@ -1,55 +1,43 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 import Edit from "../assets/edit.svg?raw";
 import Heart from "../assets/heart.svg?raw";
 import HeartFilled from "../assets/heart-filled.svg?raw";
 import Reply from "../assets/reply.svg?raw";
-import { GitalkProps } from "../gitalk";
-import type { Comment as CommentType, User } from "../interfaces";
+import type { Comment as CommentType } from "../interfaces";
 import Avatar from "./avatar";
 import Svg from "./svg";
 
-export interface CommentProps
-  extends Pick<GitalkProps, "admin" | "language">,
-    React.HTMLAttributes<HTMLDivElement> {
+export interface CommentProps extends React.HTMLAttributes<HTMLDivElement> {
   comment: CommentType;
-  user: User;
-  repliedText?: string;
-  onLike?: (like: boolean) => void;
-  onReply?: (comment: string) => void;
+  isAuthor: boolean;
+  isAdmin: boolean;
+  onReply: (comment: CommentType) => void;
+  onLike: (like: boolean, comment: CommentType) => void;
+  likeLoading: boolean;
 }
 
 const Comment: React.FC<CommentProps> = ({
   comment,
-  user,
-  repliedText,
-  onLike,
+  isAuthor,
+  isAdmin,
   onReply,
-  admin,
-  language,
-  className,
+  onLike,
+  likeLoading,
+  className = "",
   ...restProps
 }) => {
   const ref = useRef<HTMLDivElement>(null);
 
-  const {
-    user: { login: commentAuthor },
-    reactions,
-  } = comment;
-  const currentUser = user.login;
+  const { t } = useTranslation();
 
-  const isCommentAuthor = commentAuthor === currentUser;
-  const isAdmin = admin.find(
-    (username) => username.toLowerCase() === commentAuthor.toLowerCase(),
-  );
+  const { body_html, created_at, user, reactionsHeart, html_url } = comment;
 
-  let reactionTotalCount = "";
-  if (reactions?.totalCount) {
-    reactionTotalCount = String(reactions.totalCount);
-    if (reactions.totalCount === 100 && reactions.pageInfo?.hasNextPage) {
-      reactionTotalCount = "100+";
-    }
-  }
+  const reactionsHeartCountText = useMemo(() => {
+    const totalCount = reactionsHeart?.totalCount ?? 0;
+    return totalCount > 100 ? "100+" : String(totalCount);
+  }, [reactionsHeart]);
 
   useEffect(() => {
     const commentElement = ref.current;
@@ -84,48 +72,38 @@ const Comment: React.FC<CommentProps> = ({
     >
       <Avatar
         className="gt-comment-avatar"
-        src={comment.user && comment.user.avatar_url}
-        alt={comment.user && comment.user.login}
+        src={user?.avatar_url}
+        alt={user?.login}
       />
 
       <div className="gt-comment-content">
         <div className="gt-comment-header">
           <div className={`gt-comment-block-${user ? "2" : "1"}`} />
-          <a
-            className="gt-comment-username"
-            href={comment.user && comment.user.html_url}
-          >
-            {comment.user && comment.user.login}
+          <a className="gt-comment-username" href={user?.html_url}>
+            {user?.login}
           </a>
-          <span className="gt-comment-text">{repliedText}</span>
+          <span className="gt-comment-text">{t("commented")}</span>
           <span className="gt-comment-date">
-            {new Date(comment.created_at).toISOString()}
+            {new Date(created_at).toISOString()}
           </span>
-          {onLike && (
-            <a
-              className="gt-comment-like"
-              title="Like"
-              onClick={() => onLike(!reactions?.viewerHasReacted)}
-            >
-              {reactions?.viewerHasReacted ? (
-                <Svg
-                  className="gt-ico-heart"
-                  icon={HeartFilled}
-                  text={reactionTotalCount}
-                ></Svg>
-              ) : (
-                <Svg
-                  className="gt-ico-heart"
-                  icon={Heart}
-                  text={reactionTotalCount}
-                />
-              )}
-            </a>
-          )}
-          {isCommentAuthor && (
+          <a
+            className="gt-comment-like"
+            title="Like"
+            onClick={() => {
+              if (reactionsHeart && !likeLoading)
+                onLike(!reactionsHeart.viewerHasReacted, comment);
+            }}
+          >
+            <Svg
+              className="gt-ico-heart"
+              icon={reactionsHeart?.viewerHasReacted ? HeartFilled : Heart}
+              text={reactionsHeartCountText}
+            />
+          </a>
+          {isAuthor && (
             // TODO: 支持在 Gitalk 里编辑
             <a
-              href={comment.html_url}
+              href={html_url}
               className="gt-comment-edit"
               title="Edit"
               target="_blank"
@@ -134,22 +112,18 @@ const Comment: React.FC<CommentProps> = ({
               <Svg className="gt-ico-edit" icon={Edit} />
             </a>
           )}
-          {onReply && (
-            <a
-              className="gt-comment-reply"
-              title="Reply"
-              onClick={() => {
-                onReply(comment);
-              }}
-            >
-              <Svg className="gt-ico-reply" icon={Reply} />
-            </a>
-          )}
+          <a
+            className="gt-comment-reply"
+            title="Reply"
+            onClick={() => onReply(comment)}
+          >
+            <Svg className="gt-ico-reply" icon={Reply} />
+          </a>
         </div>
         <div
           className="gt-comment-body markdown-body"
           dangerouslySetInnerHTML={{
-            __html: comment.body_html,
+            __html: body_html ?? "",
           }}
         />
       </div>

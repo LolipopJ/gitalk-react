@@ -1,9 +1,13 @@
 import "../lib/themes/gitalk-light.scss";
 
-import { useEffect, useState } from "react";
+import { useRequest } from "ahooks";
+import { Octokit } from "octokit";
+import { useState } from "react";
 
+import { ACCESS_TOKEN_KEY } from "../lib/constants";
 import Gitalk from "../lib/gitalk";
-import { getOctokitInstance } from "../lib/services";
+import { Issue } from "../lib/interfaces";
+import logger from "../lib/utils/logger";
 
 const {
   VITE_CLIENT_ID,
@@ -16,37 +20,61 @@ const {
 const PER_PAGE = 30;
 
 const App = () => {
-  const [loading, setLoading] = useState<boolean>(true);
-  const [loaded, setLoaded] = useState<boolean>(false);
-  const [page, setPage] = useState<number>(1);
-  const [issueList, setIssueList] = useState<number[]>([]);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issuesPage, setIssuesPage] = useState<number>(1);
+  const [issuesLoaded, setIssuesLoaded] = useState<boolean>(false);
+
   const [issueNumber, setIssueNumber] = useState<number>();
 
-  useEffect(() => {
-    setLoading(true);
+  const { loading: getIssuesLoading } = useRequest<void, [number]>(
+    async () => {
+      const from = (issuesPage - 1) * PER_PAGE + 1;
+      const to = issuesPage * PER_PAGE;
 
-    const octokit = getOctokitInstance();
-    octokit
-      .request("GET /repos/{owner}/{repo}/issues", {
-        owner: VITE_REPO_OWNER,
-        repo: VITE_REPO_NAME,
-        labels: "Gitalk",
-        page,
-        per_page: PER_PAGE,
-      })
-      .then((res) => {
-        const issueNumbers = res.data.map((item) => item.number);
+      const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+      const octokit = new Octokit(
+        accessToken
+          ? {
+              auth: accessToken,
+            }
+          : {},
+      );
 
-        setIssueList((prev) => [...prev, ...issueNumbers]);
-        setLoading(false);
-        if (issueNumbers.length < PER_PAGE) setLoaded(true);
-      });
-  }, [page]);
+      const getIssuesRes = await octokit.request(
+        "GET /repos/{owner}/{repo}/issues",
+        {
+          owner: VITE_REPO_OWNER,
+          repo: VITE_REPO_NAME,
+          labels: "Gitalk",
+          page: issuesPage,
+          per_page: PER_PAGE,
+        },
+      );
+
+      if (getIssuesRes.status === 200) {
+        const _issues = getIssuesRes.data;
+        logger.s(`Get issues from ${from} to ${to} successfully:`, _issues);
+
+        if (_issues.length < PER_PAGE) {
+          setIssuesLoaded(true);
+        }
+
+        setIssues((prev) => [...prev, ..._issues]);
+      } else {
+        logger.e(`Get issues from ${from} to ${to} failed:`, getIssuesRes);
+        throw new Error(JSON.stringify(getIssuesRes));
+      }
+    },
+    {
+      ready: !!VITE_REPO_OWNER && !!VITE_REPO_NAME,
+      refreshDeps: [issuesPage],
+    },
+  );
 
   return (
     <div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-        {issueList.map((number) => (
+        {issues.map(({ number }) => (
           <a
             key={number}
             onClick={() => setIssueNumber(number)}
@@ -61,12 +89,12 @@ const App = () => {
           </a>
         ))}
         <button
-          onClick={() => setPage((prev) => prev + 1)}
-          disabled={loading || loaded}
+          onClick={() => setIssuesPage((prev) => prev + 1)}
+          disabled={getIssuesLoading || issuesLoaded}
         >
-          {loaded
+          {issuesLoaded
             ? "Issues loaded"
-            : loading
+            : getIssuesLoading
               ? "Loading..."
               : "Load more issues"}
         </button>

@@ -12,7 +12,7 @@ const Avatar: React.FC<AvatarProps> = ({
   src,
   alt,
   defaultSrc = DEFAULT_AVATAR,
-  className,
+  className = "",
   ...restProps
 }) => {
   const [imgSrc, setImgSrc] = useState<string>(src ?? defaultSrc);

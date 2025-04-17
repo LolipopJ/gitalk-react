@@ -26,8 +26,8 @@
     "build:ts": "tsc -b && vite build",
     "build:scss": "vite build --config vite.config.scss.ts",
     "lint": "npm run lint:ts && npm run lint:scss",
-    "lint:ts": "eslint .",
-    "lint:scss": "stylelint lib/**/*.scss",
+    "lint:ts": "eslint . --fix",
+    "lint:scss": "stylelint lib/**/*.scss --fix",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -49,7 +49,7 @@
     "@types/node": "^22.14.1",
     "@types/react": "^16.8.0",
     "@types/react-dom": "^16.8.0",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^4.4.0",
     "eslint": "^9.24.0",
     "eslint-config-prettier": "^10.1.2",
     "eslint-plugin-prettier": "^5.2.6",
@@ -67,8 +67,8 @@
     "stylelint-config-recess-order": "^6.0.0",
     "stylelint-config-standard-scss": "^14.0.0",
     "typescript": "~5.8.3",
-    "typescript-eslint": "^8.29.1",
-    "vite": "^6.2.6",
+    "typescript-eslint": "^8.30.1",
+    "vite": "^6.3.0",
     "vite-plugin-dts": "^4.5.3"
   }
 }

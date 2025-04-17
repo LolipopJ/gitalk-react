@@ -1,6 +1,6 @@
 import logger from "./logger";
 
-export const isSupportsCSSVariables = () => {
+export const supportsCSSVariables = () => {
   const testKey = "--supports-css-variables";
   const testValue = "1rem";
 
@@ -18,7 +18,7 @@ export const isSupportsCSSVariables = () => {
   }
 };
 
-export const isSupportsES2020 = () => {
+export const supportsES2020 = () => {
   try {
     return (
       typeof BigInt !== "undefined" &&

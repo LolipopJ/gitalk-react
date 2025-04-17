@@ -8,7 +8,7 @@ export interface ButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
 const Button: React.FC<ButtonProps> = ({
   text,
   isLoading = false,
-  className,
+  className = "",
   ...restProps
 }) => (
   <button className={`gt-btn ${className}`} disabled={isLoading} {...restProps}>
