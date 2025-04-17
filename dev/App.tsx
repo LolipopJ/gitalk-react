@@ -1,5 +1,6 @@
 import "../lib/themes/gitalk-light.scss";
 
+// import "../lib/themes/gitalk-dark.scss";
 import { useRequest } from "ahooks";
 import { Octokit } from "octokit";
 import { useState } from "react";
@@ -16,6 +17,8 @@ const {
   VITE_REPO_NAME,
   VITE_ADMIN,
 } = import.meta.env;
+
+const theme = "light";
 
 const PER_PAGE = 30;
 
@@ -99,7 +102,13 @@ const App = () => {
               : "Load more issues"}
         </button>
       </div>
-      <div style={{ marginTop: 16 }}>
+      <div
+        style={{
+          marginTop: 16,
+          padding: 32,
+          background: theme === "light" ? "#fff" : "#000",
+        }}
+      >
         {!!issueNumber && (
           <Gitalk
             clientID={VITE_CLIENT_ID}

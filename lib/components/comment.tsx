@@ -34,6 +34,9 @@ const Comment: React.FC<CommentProps> = ({
   const { language, polyglot, dateFnsLocaleMap } = useContext(I18nContext);
 
   const { body_html, created_at, user, reactionsHeart, html_url } = comment;
+  const commentHtmlUrl = html_url.includes("github.com")
+    ? html_url
+    : `https://github.com/${html_url}`;
 
   const reactionsHeartCountText = useMemo(() => {
     const totalCount = reactionsHeart?.totalCount ?? 0;
@@ -80,7 +83,6 @@ const Comment: React.FC<CommentProps> = ({
 
       <div className="gt-comment-content">
         <div className="gt-comment-header">
-          <div className={`gt-comment-block-${user ? "2" : "1"}`} />
           <a
             className="gt-comment-username"
             href={user?.html_url}
@@ -89,47 +91,49 @@ const Comment: React.FC<CommentProps> = ({
           >
             {user?.login}
           </a>
-          <span className="gt-comment-text">{polyglot.t("commented")}</span>
-          <span className="gt-comment-date">
-            {" " +
+          <div className="gt-comment-date" title={created_at}>
+            {polyglot.t("commented") +
+              " " +
               formatDistanceToNow(parseISO(created_at), {
                 addSuffix: true,
                 locale: dateFnsLocaleMap[language],
               })}
-          </span>
-          <a
-            className="gt-comment-like"
-            title="Like"
-            onClick={() => {
-              if (reactionsHeart && !likeLoading)
-                onLike(!reactionsHeart.viewerHasReacted, comment);
-            }}
-          >
-            <Svg
-              className="gt-ico-heart"
-              icon={reactionsHeart?.viewerHasReacted ? HeartFilled : Heart}
-              text={reactionsHeartCountText}
-            />
-          </a>
-          {isAuthor && (
-            // TODO: 支持在 Gitalk 里编辑
+          </div>
+          <div className="gt-comment-actions">
             <a
-              href={html_url}
-              className="gt-comment-edit"
-              title="Edit"
-              target="_blank"
-              rel="noopener noreferrer"
+              className="gt-comment-like"
+              title="Like"
+              onClick={() => {
+                if (reactionsHeart && !likeLoading)
+                  onLike(!reactionsHeart.viewerHasReacted, comment);
+              }}
             >
-              <Svg className="gt-ico-edit" icon={Edit} />
+              <Svg
+                className="gt-ico-heart"
+                icon={reactionsHeart?.viewerHasReacted ? HeartFilled : Heart}
+                text={reactionsHeartCountText}
+              />
             </a>
-          )}
-          <a
-            className="gt-comment-reply"
-            title="Reply"
-            onClick={() => onReply(comment)}
-          >
-            <Svg className="gt-ico-reply" icon={Reply} />
-          </a>
+            {isAuthor && (
+              // TODO: 支持在 Gitalk 里编辑
+              <a
+                href={commentHtmlUrl}
+                className="gt-comment-edit"
+                title="Edit"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Svg className="gt-ico-edit" icon={Edit} />
+              </a>
+            )}
+            <a
+              className="gt-comment-reply"
+              title="Reply"
+              onClick={() => onReply(comment)}
+            >
+              <Svg className="gt-ico-reply" icon={Reply} />
+            </a>
+          </div>
         </div>
         <div
           className="gt-comment-body markdown-body"

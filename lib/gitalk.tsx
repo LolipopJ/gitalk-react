@@ -628,6 +628,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         } as CommentType;
         logger.s(`Create issue comment successfully.`);
 
+        setInputComment("");
         onCreateComment?.(createdIssueComment);
 
         return localComments.concat([createdIssueComment]);

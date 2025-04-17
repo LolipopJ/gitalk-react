@@ -46,6 +46,7 @@ $gt-breakpoint-mobile: 479px;
   font-size: $gt-size-base;
   font-weight: 400;
   line-height: 1.5;
+  color: var(--gt-color-text);
   font-synthesis: none;
   text-rendering: optimizelegibility;
   -webkit-font-smoothing: antialiased;
@@ -108,7 +109,7 @@ $gt-breakpoint-mobile: 479px;
         }
 
         svg {
-          fill: inherit;
+          fill: var(--gt-color-text);
         }
       }
     }
@@ -309,7 +310,7 @@ $gt-breakpoint-mobile: 479px;
         margin: 0 0 0 em(5px);
 
         svg {
-          fill: inherit;
+          fill: var(--gt-color-text);
         }
       }
 
@@ -387,6 +388,7 @@ $gt-breakpoint-mobile: 479px;
         max-height: em(240px);
         padding: em(12px);
         font-size: em(14px);
+        color: inherit;
         word-wrap: break-word;
         resize: vertical;
         outline: none;
@@ -469,7 +471,7 @@ $gt-breakpoint-mobile: 479px;
         transition: all ease 0.25s;
 
         &:hover {
-          box-shadow: 0 em(10px) em(60px) 0 var(--gt-color-comment-bg-darker);
+          box-shadow: 0 em(2px) em(24px) 0 var(--gt-color-comment-shadow);
         }
 
         @include mobile {
@@ -480,20 +482,9 @@ $gt-breakpoint-mobile: 479px;
 
       &-header {
         position: relative;
+        display: flex;
         margin-bottom: em(8px);
         font-size: em(14px);
-      }
-
-      &-block-1 {
-        float: right;
-        width: em(32px);
-        height: em(22px);
-      }
-
-      &-block-2 {
-        float: right;
-        width: em(64px);
-        height: em(22px);
       }
 
       &-username {
@@ -506,30 +497,20 @@ $gt-breakpoint-mobile: 479px;
         }
       }
 
-      &-text {
+      &-date {
         margin-left: em(8px);
         color: var(--gt-color-sub);
       }
 
-      &-date {
-        color: var(--gt-color-sub);
-      }
-
-      &-like {
-        top: 0;
-        right: em(32px);
-      }
-
-      &-edit,
-      &-reply {
-        top: 0;
-        right: 0;
+      &-actions {
+        display: flex;
+        gap: em(12px);
+        margin-left: auto;
       }
 
       &-like,
       &-edit,
       &-reply {
-        position: absolute;
         height: em(22px);
 
         &:hover {
@@ -578,7 +559,12 @@ $gt-breakpoint-mobile: 479px;
 
       &-admin {
         .gt-comment-content {
-          background-color: var(--gt-color-comment-adminbg);
+          box-shadow: 0 em(2px) em(12px) 0 var(--gt-color-comment-shadow);
+
+          &:hover {
+            box-shadow: 0 em(2px) em(24px) 0
+              var(--gt-color-comment-shadow-admin);
+          }
         }
       }
     }

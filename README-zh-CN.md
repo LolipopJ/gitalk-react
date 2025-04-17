@@ -170,6 +170,7 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 ```css
 .gt-container {
   --gt-theme-mode: light;
+  --gt-color-text: #171717;
   --gt-color-main: #6190e8;
   --gt-color-main-lighter: rgb(186.0386740331, 206.5524861878, 244.9613259669);
   --gt-color-sub: #a1a1a1;
@@ -180,8 +181,8 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
   --gt-color-input-bg: #f6f6f6;
   --gt-color-input-bg-lighter: hsl(0, 0%, 146.4705882353%);
   --gt-color-comment-bg: #f9f9f9;
-  --gt-color-comment-bg-darker: rgb(243.9, 243.9, 243.9);
-  --gt-color-comment-adminbg: #f6f9fe;
+  --gt-color-comment-shadow: rgb(218.4, 218.4, 218.4);
+  --gt-color-comment-shadow-admin: rgb(203.1, 203.1, 203.1);
   --gt-color-comment-txt: #333;
   --gt-color-link-active: #333;
   --gt-color-btn: #fff;
@@ -195,23 +196,24 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 ```css
 .gt-container {
   --gt-theme-mode: dark;
-  --gt-color-main: #6190e8;
-  --gt-color-main-lighter: rgb(186.0386740331, 206.5524861878, 244.9613259669);
-  --gt-color-sub: #a1a1a1;
-  --gt-color-loader: #999;
-  --gt-color-error: #ff3860;
-  --gt-color-hr: #e9e9e9;
-  --gt-color-input-border: rgb(0 0 0 / 10%);
-  --gt-color-input-bg: #f6f6f6;
-  --gt-color-input-bg-lighter: hsl(0, 0%, 146.4705882353%);
-  --gt-color-comment-bg: #f9f9f9;
-  --gt-color-comment-bg-darker: rgb(243.9, 243.9, 243.9);
-  --gt-color-comment-adminbg: #f6f9fe;
-  --gt-color-comment-txt: #333;
-  --gt-color-link-active: #333;
-  --gt-color-btn: #fff;
-  --gt-color-btn-darker: rgb(242.25, 242.25, 242.25);
-  --gt-color-popbg: #fff;
+  --gt-color-text: #e9e9e9;
+  --gt-color-main: rgb(74.7403314917, 128.361878453, 228.7596685083);
+  --gt-color-main-lighter: #6190e8;
+  --gt-color-sub: #9e9e9e;
+  --gt-color-loader: #777;
+  --gt-color-error: #ef4444;
+  --gt-color-hr: #555;
+  --gt-color-input-border: rgb(255 255 255 / 10%);
+  --gt-color-input-bg: #212121;
+  --gt-color-input-bg-lighter: rgb(48.3, 48.3, 48.3);
+  --gt-color-comment-bg: #212121;
+  --gt-color-comment-shadow: rgb(78.9, 78.9, 78.9);
+  --gt-color-comment-shadow-admin: rgb(94.2, 94.2, 94.2);
+  --gt-color-comment-txt: #fafafa;
+  --gt-color-link-active: #fafafa;
+  --gt-color-btn: #eee;
+  --gt-color-btn-darker: rgb(225.25, 225.25, 225.25);
+  --gt-color-popbg: #171717;
 }
 ```
 
