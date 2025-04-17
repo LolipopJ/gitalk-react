@@ -2,7 +2,11 @@ import React, { useState } from "react";
 
 import { DEFAULT_AVATAR } from "../constants";
 
-export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface AvatarProps
+  extends React.DetailedHTMLProps<
+    React.AnchorHTMLAttributes<HTMLAnchorElement>,
+    HTMLAnchorElement
+  > {
   src?: string;
   alt?: string;
   defaultSrc?: string;
@@ -18,7 +22,12 @@ const Avatar: React.FC<AvatarProps> = ({
   const [imgSrc, setImgSrc] = useState<string>(src ?? defaultSrc);
 
   return (
-    <div className={`gt-avatar ${className}`} {...restProps}>
+    <a
+      className={`gt-avatar ${className}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      {...restProps}
+    >
       <img
         src={imgSrc}
         alt={`@${alt}`}
@@ -26,7 +35,7 @@ const Avatar: React.FC<AvatarProps> = ({
           setImgSrc(defaultSrc);
         }}
       />
-    </div>
+    </a>
   );
 };
 

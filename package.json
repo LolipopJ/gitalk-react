@@ -1,10 +1,22 @@
 {
   "name": "gitalk-react",
-  "private": true,
-  "version": "1.0.0",
+  "version": "1.0.0-beta.1",
+  "private": false,
+  "author": {
+    "name": "LolipopJ",
+    "email": "mail@towind.fun",
+    "url": "https://github.com/LolipopJ"
+  },
+  "homepage": "https://github.com/LolipopJ/gitalk-react",
+  "license": "MIT",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "lib",
+    "LICENSE",
+    "package.json",
+    "README-zh-CN.md",
+    "README.md"
   ],
   "main": "./dist/gitalk.umd.cjs",
   "module": "./dist/gitalk.js",
@@ -15,10 +27,7 @@
     },
     "./gitalk.css": "./dist/gitalk-light.css",
     "./gitalk-light.css": "./dist/gitalk-light.css",
-    "./gitalk-dark.css": "./dist/gitalk-dark.css",
-    "./gitalk.scss": "./lib/themes/gitalk-light.scss",
-    "./gitalk-light.scss": "./lib/themes/gitalk-light.scss",
-    "./gitalk-dark.scss": "./lib/themes/gitalk-dark.scss"
+    "./gitalk-dark.css": "./dist/gitalk-dark.css"
   },
   "scripts": {
     "dev": "vite",
@@ -31,13 +40,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "ahooks": "^3.8.4",
-    "dayjs": "^1.11.13",
-    "github-markdown-css": "*",
-    "i18next": "^24.0.0",
+    "ahooks": "^3.0.0",
+    "date-fns": "^4.0.0",
+    "node-polyglot": "^2.0.0",
     "octokit": "^4.0.0",
-    "react-flip-move": "^3.0.0",
-    "react-i18next": "^15.0.0"
+    "react-flip-move": "^3.0.0"
   },
   "peerDependencies": {
     "react": ">=16.8.0",
@@ -47,6 +54,7 @@
     "@eslint/js": "^9.24.0",
     "@octokit/types": "^14.0.0",
     "@types/node": "^22.14.1",
+    "@types/node-polyglot": "^2.5.0",
     "@types/react": "^16.8.0",
     "@types/react-dom": "^16.8.0",
     "@vitejs/plugin-react": "^4.4.0",
@@ -57,6 +65,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "eslint-plugin-simple-import-sort": "^12.1.1",
+    "github-markdown-css": "^5.8.1",
     "globals": "^16.0.0",
     "prettier": "^3.5.3",
     "react": "^16.8.0",
@@ -68,7 +77,7 @@
     "stylelint-config-standard-scss": "^14.0.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
-    "vite": "^6.3.0",
+    "vite": "^6.3.1",
     "vite-plugin-dts": "^4.5.3"
   }
 }

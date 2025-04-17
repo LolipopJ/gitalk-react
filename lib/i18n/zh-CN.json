@@ -1,7 +1,7 @@
 {
   "init": "Gitalk 加载中 ...",
-  "no-found-related": "未找到相关的 {{link, string}} 进行评论",
-  "please-contact": "请联系 {{user, string}} 初始化创建",
+  "no-found-related": "未找到相关的 %{link} 进行评论",
+  "please-contact": "请联系 %{user} 初始化创建",
   "init-issue": "初始化 Issue",
   "leave-a-comment": "说点什么",
   "preview": "预览",
@@ -12,7 +12,7 @@
   "first-comment-person": "来做第一个留言的人吧！",
   "commented": "发表于",
   "load-more": "加载更多",
-  "counts": "{{counts, number}} 条评论",
+  "counts": "%{counts} 条评论",
   "sort-asc": "从旧到新排序",
   "sort-desc": "从新到旧排序",
   "logout": "注销",

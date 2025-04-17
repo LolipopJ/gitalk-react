@@ -1,7 +1,7 @@
 {
   "init": "بارگزاری ...",
-  "no-found-related": "{{link, string}} مرتبط پیدا نشد.",
-  "please-contact": "لطفاً با {{user, string}} اطلاع دهید تا اضافه کند.",
+  "no-found-related": "%{link} مرتبط پیدا نشد.",
+  "please-contact": "لطفاً با %{user} اطلاع دهید تا اضافه کند.",
   "init-issue": "شروع نظرات",
   "leave-a-comment": "نظرتان را بنویسید",
   "preview": "پیش‌نمایش",
@@ -12,7 +12,7 @@
   "first-comment-person": "اولین نظر را شما بنویسید!",
   "commented": " - ",
   "load-more": "نظرات بیشتر",
-  "counts": "{{counts, number}} نظر |||| {{counts, number}} نظر",
+  "counts": "%{counts} نظر |||| %{counts} نظر",
   "sort-asc": "مرتب‌سازی از قدیمی‌ترین",
   "sort-desc": "مرتب‌سازی از جدیدترین",
   "logout": "خروج",

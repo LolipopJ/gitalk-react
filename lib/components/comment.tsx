@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import { useTranslation } from "react-i18next";
+import { formatDistanceToNow, parseISO } from "date-fns";
+import React, { useContext, useEffect, useMemo, useRef } from "react";
 
 import Edit from "../assets/edit.svg?raw";
 import Heart from "../assets/heart.svg?raw";
 import HeartFilled from "../assets/heart-filled.svg?raw";
 import Reply from "../assets/reply.svg?raw";
+import I18nContext from "../contexts/I18nContext";
 import type { Comment as CommentType } from "../interfaces";
 import Avatar from "./avatar";
 import Svg from "./svg";
@@ -30,7 +31,7 @@ const Comment: React.FC<CommentProps> = ({
 }) => {
   const ref = useRef<HTMLDivElement>(null);
 
-  const { t } = useTranslation();
+  const { language, polyglot, dateFnsLocaleMap } = useContext(I18nContext);
 
   const { body_html, created_at, user, reactionsHeart, html_url } = comment;
 
@@ -74,17 +75,27 @@ const Comment: React.FC<CommentProps> = ({
         className="gt-comment-avatar"
         src={user?.avatar_url}
         alt={user?.login}
+        href={user?.html_url}
       />
 
       <div className="gt-comment-content">
         <div className="gt-comment-header">
           <div className={`gt-comment-block-${user ? "2" : "1"}`} />
-          <a className="gt-comment-username" href={user?.html_url}>
+          <a
+            className="gt-comment-username"
+            href={user?.html_url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {user?.login}
           </a>
-          <span className="gt-comment-text">{t("commented")}</span>
+          <span className="gt-comment-text">{polyglot.t("commented")}</span>
           <span className="gt-comment-date">
-            {new Date(created_at).toISOString()}
+            {" " +
+              formatDistanceToNow(parseISO(created_at), {
+                addSuffix: true,
+                locale: dateFnsLocaleMap[language],
+              })}
           </span>
           <a
             className="gt-comment-like"

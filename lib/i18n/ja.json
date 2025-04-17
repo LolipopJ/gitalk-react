@@ -1,7 +1,7 @@
 {
   "init": "Gitalk を読み込んでいます...",
-  "no-found-related": "{{link, string}} に関連するものが見当たりません",
-  "please-contact": "コメントを初期化するために {{user, string}} に連絡してください",
+  "no-found-related": "%{link} に関連するものが見当たりません",
+  "please-contact": "コメントを初期化するために %{user} に連絡してください",
   "init-issue": "イシューを初期化する",
   "leave-a-comment": "コメントを残す",
   "preview": "プレビュー",
@@ -12,7 +12,7 @@
   "first-comment-person": "最初にコメントを残しましょう!",
   "commented": "によるコメント",
   "load-more": "もっと見る",
-  "counts": "{{counts, number}} つのコメント",
+  "counts": "%{counts} つのコメント",
   "sort-asc": "投稿順に並び替え",
   "sort-desc": "最新順で並び替え",
   "logout": "ログアウト",

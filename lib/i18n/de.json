@@ -1,7 +1,7 @@
 {
   "init": "Gitalking ...",
-  "no-found-related": "Zugehöriger {{link, string}} nicht gefunden",
-  "please-contact": "Bitte kontaktiere {{user, string}} um den Kommentar zu initialisieren",
+  "no-found-related": "Zugehöriger %{link} nicht gefunden",
+  "please-contact": "Bitte kontaktiere %{user} um den Kommentar zu initialisieren",
   "init-issue": "Initialisiere Issue",
   "leave-a-comment": "Hinterlasse einen Kommentar",
   "preview": "Vorschau",
@@ -12,7 +12,7 @@
   "first-comment-person": "Sei die erste Person, welche einen Kommentar hinterlässt!",
   "commented": "kommentierte",
   "load-more": "Zeige mehr",
-  "counts": "{{counts, number}} Kommentar |||| {{counts, number}} Kommentare",
+  "counts": "%{counts} Kommentar |||| %{counts} Kommentare",
   "sort-asc": "Älteste zuerst",
   "sort-desc": "Neuste zuerst",
   "logout": "Abmelden",

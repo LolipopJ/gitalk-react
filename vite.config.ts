@@ -30,6 +30,8 @@ export default defineConfig({
     dts({
       rollupTypes: true,
     }),
-    visualizer(),
+    visualizer({
+      open: true,
+    }),
   ],
 });

@@ -3,6 +3,7 @@ import "./i18n";
 import { useRequest } from "ahooks";
 import { Octokit } from "octokit";
 import React, {
+  forwardRef,
   useCallback,
   useEffect,
   useMemo,
@@ -10,17 +11,24 @@ import React, {
   useState,
 } from "react";
 import FlipMove from "react-flip-move";
-import { useTranslation } from "react-i18next";
 
-import ArrowDown from "./assets/arrow-down.svg";
-import Github from "./assets/github.svg";
-import Tip from "./assets/tip.svg";
+import ArrowDown from "./assets/arrow-down.svg?raw";
+import Github from "./assets/github.svg?raw";
+import Tip from "./assets/tip.svg?raw";
 import Action from "./components/action";
 import Avatar from "./components/avatar";
 import Button from "./components/button";
 import Comment, { type CommentProps } from "./components/comment";
 import Svg from "./components/svg";
-import { ACCESS_TOKEN_KEY, VERSION } from "./constants";
+import {
+  ACCESS_TOKEN_KEY,
+  DATE_FNS_LOCALE_MAP,
+  DEFAULT_LABELS,
+  HOMEPAGE,
+  VERSION,
+} from "./constants";
+import I18nContext from "./contexts/I18nContext";
+import i18n, { type Lang } from "./i18n";
 import type {
   Comment as CommentType,
   Issue as IssueType,
@@ -94,11 +102,10 @@ export interface GitalkProps
   body?: string;
   /**
    * Localization language key.
-   * en, zh-CN and zh-TW are currently available.
    *
    * @default navigator.language
    */
-  language?: string;
+  language?: Lang;
   /**
    * Pagination size, with maximum 100.
    *
@@ -137,10 +144,10 @@ export interface GitalkProps
    * @default
    * ```ts
    * {
-   *  staggerDelayBy: 150,
-   *  appearAnimation: 'accordionVertical',
-   *  enterAnimation: 'accordionVertical',
-   *  leaveAnimation: 'accordionVertical',
+   *   staggerDelayBy: 150,
+   *   appearAnimation: 'accordionVertical',
+   *   enterAnimation: 'accordionVertical',
+   *   leaveAnimation: 'accordionVertical',
    * }
    * ```
    * @link https://github.com/joshwcomeau/react-flip-move/blob/master/documentation/enter_leave_animations.md
@@ -155,14 +162,22 @@ export interface GitalkProps
   proxy?: string;
   /**
    * Default user field if comments' author is not provided
+   *
+   * @default
+   * ```ts
+   * {
+   *   avatar_url: "//avatars1.githubusercontent.com/u/29697133?s=50",
+   *   login: "null",
+   *   html_url: ""
+   * }
    */
   defaultUser?: CommentType["user"];
   /**
    * Default user field if comments' author is not provided
    *
-   * @deprecated use `defaultUser` to unify fields name
+   * @deprecated use `defaultUser`
    */
-  defaultAuthor?: IssueCommentsQLResponse["data"]["repository"]["issue"]["comments"]["nodes"][number]["author"];
+  defaultAuthor?: IssueCommentsQLResponse["repository"]["issue"]["comments"]["nodes"][number]["author"];
   updateCountCallback?: (count: number) => void;
   onCreateComment?: (comment: CommentType) => void;
 }
@@ -178,13 +193,13 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     admin,
     id: propsIssueId = location.href,
     number: issueNumber = -1,
-    labels: issueBaseLabels = ["Gitalk"],
+    labels: issueBaseLabels = DEFAULT_LABELS,
     title: issueTitle = document.title,
     body: issueBody = location.href +
       document
         ?.querySelector('meta[name="description"]')
         ?.getAttribute("content") || "",
-    language = navigator.language,
+    language = navigator.language as Lang,
     perPage: propsPerPage = 10,
     pagerDirection = "last",
     createIssueManually = false,
@@ -221,12 +236,13 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           html_url: "",
         };
 
+  logger.i("re-rendered.");
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputComment, setInputComment] = useState<string>("");
   const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
   const [isPreviewComment, setIsPreviewComment] = useState<boolean>(false);
 
-  /** Comments sorted by date ASC */
-  const [comments, setComments] = useState<CommentType[]>([]);
   const [commentsCount, setCommentsCount] = useState<number>(0);
   const [commentsCursor, setCommentsCursor] = useState("");
   const [commentsPage, setCommentsPage] = useState<number>(1);
@@ -238,13 +254,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   const [alert, setAlert] = useState<string>("");
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const { t, i18n } = useTranslation();
-
-  useEffect(() => {
-    i18n.changeLanguage(language);
-  }, [i18n, language]);
+  const polyglot = useMemo(() => i18n(language), [language]);
 
   const {
     data: accessToken = localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined,
@@ -262,8 +272,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         logger.s(`Get access token successfully:`, data);
       },
       onError: (error) => {
-        logger.e(`An error occurred while getting access token:`, error);
         setAlert(`An error occurred while getting access token: ${error}`);
+        logger.e(`An error occurred while getting access token:`, error);
       },
     },
   );
@@ -303,13 +313,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       if (getUserRes.status === 200) {
         const _user = getUserRes.data;
         logger.s(`Login successfully:`, _user);
-
         return _user;
       } else {
         localStorage.removeItem(ACCESS_TOKEN_KEY);
         setAccessToken(undefined);
         logger.e(`Get user details with access token failed:`, getUserRes);
-
         return undefined;
       }
     },
@@ -330,7 +338,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   const issueLabels = useMemo(
     () => issueBaseLabels.concat([issueId]),
-    [issueId, issueBaseLabels],
+    [issueBaseLabels, issueId],
   );
 
   const { loading: createIssueLoading, runAsync: runCreateIssue } = useRequest(
@@ -353,8 +361,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         logger.s(`Create issue successfully:`, _issue);
         return _issue;
       } else {
-        logger.e(`Create issue failed:`, createIssueRes);
         setAlert(`Create issue failed: ${createIssueRes}`);
+        logger.e(`Create issue failed:`, createIssueRes);
         return undefined;
       }
     },
@@ -394,12 +402,12 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             return _issue;
           }
         } else {
+          setAlert(
+            `Get issue ${issueNumber} in repository ${owner}/${repo} failed: ${getIssueRes}`,
+          );
           logger.e(
             `Get issue ${issueNumber} in repository ${owner}/${repo} failed:`,
             getIssueRes,
-          );
-          setAlert(
-            `Get issue ${issueNumber} in repository ${owner}/${repo} failed: ${getIssueRes}`,
           );
         }
       } else if (issueId) {
@@ -442,12 +450,12 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             return _issue;
           }
         } else {
+          setAlert(
+            `Get issue with labels ${issueLabels} in repository ${owner}/${repo} failed: ${getIssuesRes}`,
+          );
           logger.e(
             `Get issue with labels ${issueLabels} in repository ${owner}/${repo} failed:`,
             getIssuesRes,
-          );
-          setAlert(
-            `Get issue with labels ${issueLabels} in repository ${owner}/${repo} failed: ${getIssuesRes}`,
           );
         }
       }
@@ -455,29 +463,17 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       return undefined;
     },
     {
-      ready:
-        !!owner &&
-        !!repo &&
-        (!!issueNumber || !!issueId) &&
-        !!issueLabels.length,
-      refreshDeps: [owner, repo, issueNumber, issueId, issueLabels],
+      ready: !!owner && !!repo && (!!issueNumber || !!issueId),
+      refreshDeps: [owner, repo, issueNumber, issueId],
     },
   );
 
-  useEffect(() => {
-    setComments([]);
-    setCommentsCount(0);
-    setCommentsCursor("");
-    setCommentsPage(1);
-    setCommentsLoaded(false);
-
-    if (issue) {
-      setCommentsCount(issue.comments);
-    }
-  }, [issue, user, pagerDirection]);
-
-  const { loading: getCommentsLoading } = useRequest(
-    async () => {
+  const {
+    data: comments = [],
+    mutate: setComments,
+    loading: getCommentsLoading,
+  } = useRequest(
+    async (): Promise<CommentType[]> => {
       const { number: issueNumber } = issue as IssueType;
       const from = (commentsPage - 1) * commentsPerPage + 1;
       const to = commentsPage * commentsPerPage;
@@ -496,10 +492,10 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             pageSize: commentsPerPage,
             ...(commentsCursor ? { cursor: commentsCursor } : {}),
           });
-        logger.i("getIssueCommentsRes", getIssueCommentsRes);
-        if (getIssueCommentsRes.status === 200) {
+
+        if (getIssueCommentsRes.repository) {
           const _comments =
-            getIssueCommentsRes.data.repository.issue.comments.nodes.map(
+            getIssueCommentsRes.repository.issue.comments.nodes.map(
               (comment) => {
                 return {
                   ...comment,
@@ -528,17 +524,15 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             setCommentsLoaded(true);
           }
 
-          setComments((prev) => {
-            if (pagerDirection === "last") return [..._comments, ...prev];
-            else return [...prev, ..._comments];
-          });
+          if (pagerDirection === "last") return [..._comments, ...comments];
+          else return [...comments, ..._comments];
         } else {
+          setAlert(
+            `Get comments from ${from} to ${to} failed: ${getIssueCommentsRes}`,
+          );
           logger.e(
             `Get comments from ${from} to ${to} failed:`,
             getIssueCommentsRes,
-          );
-          setAlert(
-            `Get comments from ${from} to ${to} failed: ${getIssueCommentsRes}`,
           );
         }
       } else {
@@ -551,6 +545,9 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             issue_number: issueNumber,
             page: commentsPage,
             per_page: commentsPerPage,
+            headers: {
+              accept: "application/vnd.github.v3.full+json",
+            },
           },
         );
 
@@ -576,21 +573,23 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             setCommentsLoaded(true);
           }
 
-          setComments((prev) => [...prev, ..._comments]);
+          return [...comments, ..._comments];
         } else {
+          setAlert(
+            `Get comments from ${from} to ${to} failed: ${getIssueCommentsRes}`,
+          );
           logger.e(
             `Get comments from ${from} to ${to} failed:`,
             getIssueCommentsRes,
           );
-          setAlert(
-            `Get comments from ${from} to ${to} failed: ${getIssueCommentsRes}`,
-          );
         }
       }
+
+      return comments;
     },
     {
-      ready: !!issue && !getUserLoading,
-      refreshDeps: [commentsPage],
+      ready: !!owner && !!repo && !!issue && !getUserLoading && !commentsLoaded,
+      refreshDeps: [commentsPage, issue, user, pagerDirection],
     },
   );
 
@@ -610,6 +609,9 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           repo,
           issue_number: issueNumber,
           body: inputComment,
+          headers: {
+            accept: "application/vnd.github.v3.full+json",
+          },
         },
       );
 
@@ -630,20 +632,29 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
         return localComments.concat([createdIssueComment]);
       } else {
-        logger.e(`Create issue comment failed:`, createIssueCommentRes);
         setAlert(`Create issue comment failed: ${createIssueCommentRes}`);
+        logger.e(`Create issue comment failed:`, createIssueCommentRes);
         return localComments;
       }
     },
     {
       manual: true,
-      ready: !!issue && !!inputComment,
+      ready: !!owner && !!repo && !!issue && !!inputComment,
     },
   );
 
   useEffect(() => {
+    setComments([]);
+    setCommentsCount(0);
+    setCommentsCursor("");
+    setCommentsPage(1);
+    setCommentsLoaded(false);
     setLocalComments([]);
-  }, [issue, user, setLocalComments]);
+
+    if (issue) {
+      setCommentsCount(issue.comments);
+    }
+  }, [issue, user, pagerDirection, setComments, setLocalComments]);
 
   /** sorted all comments */
   const allComments = useMemo(() => {
@@ -657,7 +668,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     return _allComments;
   }, [comments, commentsPagerDirection, localComments, user]);
 
-  const allCommentsCount = commentsCount + localComments.length;
+  const allCommentsCount = commentsCount + (localComments ?? []).length;
 
   useEffect(() => {
     updateCountCallback?.(allCommentsCount);
@@ -665,7 +676,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   const {
     data: commentHtml = "",
-    // loading: getCommentHtmlLoading,
+    loading: getCommentHtmlLoading,
     run: runGetCommentHtml,
   } = useRequest(
     async () => {
@@ -677,8 +688,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         const _commentHtml = getPreviewedHtmlRes.data;
         return _commentHtml;
       } else {
-        logger.e(`Preview rendered comment failed:`, getPreviewedHtmlRes);
         setAlert(`Preview rendered comment failed: ${getPreviewedHtmlRes}`);
+        logger.e(`Preview rendered comment failed:`, getPreviewedHtmlRes);
         return "";
       }
     },
@@ -774,7 +785,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         if (isLocalComment) {
           setLocalComments((prev) => [...(prev ?? [])]);
         } else {
-          setComments((prev) => [...prev]);
+          setComments((prev) => [...(prev ?? [])]);
         }
       },
       {
@@ -922,7 +933,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     return (
       <div className="gt-initing">
         <i className="gt-loader" />
-        <p className="gt-initing-text">{t("init")}</p>
+        <p className="gt-initing-text">{polyglot.t("init")}</p>
       </div>
     );
   };
@@ -932,13 +943,13 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       <div className="gt-no-init" key="no-init">
         <p
           dangerouslySetInnerHTML={{
-            __html: t("no-found-related", {
+            __html: polyglot.t("no-found-related", {
               link: `<a href="https://github.com/${owner}/${repo}/issues">Issues</a>`,
             }),
           }}
         />
         <p>
-          {t("please-contact", {
+          {polyglot.t("please-contact", {
             user: admin.map((u) => `@${u}`).join(" "),
           })}
         </p>
@@ -947,7 +958,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             <Button
               onClick={runCreateIssue}
               isLoading={createIssueLoading}
-              text={t("init-issue")}
+              text={polyglot.t("init-issue")}
             />
           </p>
         ) : null}
@@ -955,7 +966,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           <Button
             className="gt-btn-login"
             onClick={onLogin}
-            text={t("login-with-github")}
+            text={polyglot.t("login-with-github")}
           />
         )}
       </div>
@@ -970,6 +981,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             className="gt-header-avatar"
             src={user.avatar_url}
             alt={user.login}
+            href={user.html_url}
           />
         ) : (
           <a className="gt-avatar-github" onClick={onLogin}>
@@ -986,12 +998,14 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             onFocus={onCommentInputFocus}
             onBlur={onCommentInputBlur}
             onKeyDown={onCommentInputKeyDown}
-            placeholder={t("leave-a-comment")}
+            placeholder={polyglot.t("leave-a-comment")}
           />
           <div
             className="gt-header-preview markdown-body"
             style={{ display: isPreviewComment ? undefined : "none" }}
-            dangerouslySetInnerHTML={{ __html: commentHtml }}
+            dangerouslySetInnerHTML={{
+              __html: getCommentHtmlLoading ? "" : commentHtml,
+            }}
           />
           <div className="gt-header-controls">
             <a
@@ -1003,14 +1017,14 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
               <Svg
                 className="gt-ico-tip"
                 icon={Tip}
-                text={t("support-markdown")}
+                text={polyglot.t("support-markdown")}
               />
             </a>
             {user && (
               <Button
                 className="gt-btn-public"
                 onClick={runCreateIssueComment}
-                text={t("comment")}
+                text={polyglot.t("comment")}
                 isLoading={createIssueCommentLoading}
               />
             )}
@@ -1018,14 +1032,15 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             <Button
               className="gt-btn-preview"
               onClick={onCommentInputPreview}
-              text={isPreviewComment ? t("edit") : t("preview")}
-              // isLoading={getCommentHtmlLoading}
+              text={
+                isPreviewComment ? polyglot.t("edit") : polyglot.t("preview")
+              }
             />
             {!user && (
               <Button
                 className="gt-btn-login"
                 onClick={onLogin}
-                text={t("login-with-github")}
+                text={polyglot.t("login-with-github")}
               />
             )}
           </div>
@@ -1034,47 +1049,58 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     );
   };
 
+  // Why forwardRef? https://www.npmjs.com/package/react-flip-move#usage-with-functional-components
+  const CommentWithForwardedRef = forwardRef<
+    HTMLDivElement,
+    { comment: CommentType }
+  >(({ comment }, ref) => {
+    const {
+      id: commentId,
+      user: commentAuthor,
+      reactionsHeart: commentReactionsHeart,
+    } = comment;
+
+    const commentAuthorName = commentAuthor?.login;
+    const isAuthor =
+      !!user && !!commentAuthorName && user.login === commentAuthorName;
+    const isAdmin =
+      !!commentAuthorName &&
+      !!admin.find(
+        (username) =>
+          username.toLowerCase() === commentAuthorName.toLowerCase(),
+      );
+    const heartReactionId = commentReactionsHeart?.nodes.find(
+      (node) => node.user.login === user?.login,
+    )?.id;
+
+    return (
+      <div ref={ref}>
+        <Comment
+          comment={comment}
+          isAuthor={isAuthor}
+          isAdmin={isAdmin}
+          onReply={onReplyComment}
+          onLike={(like) => {
+            runLikeOrDislikeComment(like, commentId, heartReactionId);
+          }}
+          likeLoading={likeOrDislikeCommentLoading}
+        />
+      </div>
+    );
+  });
+
   const renderCommentList = () => {
     return (
       <div className="gt-comments" key="comments">
         <FlipMove {...flipMoveOptions}>
-          {allComments.map((comment) => {
-            const {
-              id: commentId,
-              user: commentAuthor,
-              reactionsHeart: commentReactionsHeart,
-            } = comment;
-
-            const commentAuthorName = commentAuthor?.login;
-            const isAuthor =
-              !!user && !!commentAuthorName && user.login === commentAuthorName;
-            const isAdmin =
-              !!commentAuthorName &&
-              !!admin.find(
-                (username) =>
-                  username.toLowerCase() === commentAuthorName.toLowerCase(),
-              );
-            const heartReactionId = commentReactionsHeart?.nodes.find(
-              (node) => node.user.login === user?.login,
-            )?.id;
-
-            return (
-              <Comment
-                comment={comment}
-                key={commentId}
-                isAuthor={isAuthor}
-                isAdmin={isAdmin}
-                onReply={onReplyComment}
-                onLike={(like) => {
-                  runLikeOrDislikeComment(like, commentId, heartReactionId);
-                }}
-                likeLoading={likeOrDislikeCommentLoading}
-              />
-            );
-          })}
+          {allComments.map((comment) => (
+            <CommentWithForwardedRef key={comment.id} comment={comment} />
+          ))}
         </FlipMove>
         {!allCommentsCount && (
-          <p className="gt-comments-null">{t("first-comment-person")}</p>
+          <p className="gt-comments-null">
+            {polyglot.t("first-comment-person")}
+          </p>
         )}
         {!commentsLoaded && allCommentsCount ? (
           <div className="gt-comments-controls">
@@ -1082,7 +1108,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
               className="gt-btn-loadmore"
               onClick={() => setCommentsPage((prev) => prev + 1)}
               isLoading={getCommentsLoading}
-              text={t("load-more")}
+              text={polyglot.t("load-more")}
             />
           </div>
         ) : null}
@@ -1098,8 +1124,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         <span
           className="gt-counts"
           dangerouslySetInnerHTML={{
-            __html: t("counts", {
-              counts: `<a class="gt-link gt-link-counts" href="${issue && issue.html_url}" target="_blank" rel="noopener noreferrer">${allCommentsCount}</a>`,
+            __html: polyglot.t("counts", {
+              counts: `<a class="gt-link gt-link-counts" href="${issue?.html_url}" target="_blank" rel="noopener noreferrer">${allCommentsCount}</a>`,
               smart_count: allCommentsCount,
             }),
           }}
@@ -1109,14 +1135,16 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             {user
               ? [
                   <Action
+                    key={"sort-asc"}
                     className={`gt-action-sortasc${!isDesc ? " is--active" : ""}`}
                     onClick={() => setCommentsPagerDirection("first")}
-                    text={t("sort-asc")}
+                    text={polyglot.t("sort-asc")}
                   />,
                   <Action
+                    key={"sort-desc"}
                     className={`gt-action-sortdesc${isDesc ? " is--active" : ""}`}
                     onClick={() => setCommentsPagerDirection("last")}
-                    text={t("sort-desc")}
+                    text={polyglot.t("sort-desc")}
                   />,
                 ]
               : null}
@@ -1124,21 +1152,21 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
               <Action
                 className="gt-action-logout"
                 onClick={onLogout}
-                text={t("logout")}
+                text={polyglot.t("logout")}
               />
             ) : (
               <a className="gt-action gt-action-login" onClick={onLogin}>
-                {t("login-with-github")}
+                {polyglot.t("login-with-github")}
               </a>
             )}
             <div className="gt-copyright">
               <a
                 className="gt-link gt-link-project"
-                href="https://github.com/gitalk/gitalk"
+                href={HOMEPAGE}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Gitalk
+                GitalkR
               </a>
               <span className="gt-version">{VERSION}</span>
             </div>
@@ -1150,7 +1178,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             onClick={onShowOrHidePopup}
           >
             <span className="gt-user-name">
-              {user?.login ?? t("anonymous")}
+              {user?.login ?? polyglot.t("anonymous")}
             </span>
             <Svg className="gt-ico-arrdown" icon={ArrowDown} />
           </div>
@@ -1160,19 +1188,22 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   };
 
   return (
-    <div
-      className={`gt-container ${isInputFocused ? "gt-input-focused" : ""} ${className}`}
-      {...restProps}
+    <I18nContext.Provider
+      value={{ language, polyglot, dateFnsLocaleMap: DATE_FNS_LOCALE_MAP }}
     >
-      {alert && <div className="gt-error">{alert}</div>}
-      {initialized
-        ? issueCreated
-          ? [renderMeta(), renderHeader(), renderCommentList()]
-          : renderIssueNotInitialized()
-        : renderInitializing()}
-    </div>
+      <div
+        className={`gt-container ${isInputFocused ? "gt-input-focused" : ""} ${className}`}
+        {...restProps}
+      >
+        {alert && <div className="gt-error">{alert}</div>}
+        {initialized
+          ? issueCreated
+            ? [renderMeta(), renderHeader(), renderCommentList()]
+            : renderIssueNotInitialized()
+          : renderInitializing()}
+      </div>
+    </I18nContext.Provider>
   );
 };
 
-export { CommentType, IssueType, UserType };
 export default Gitalk;

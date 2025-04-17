@@ -36,6 +36,7 @@ $gt-size-loader-dot: em(6px);
 $gt-size-loader: em(28px);
 $gt-size-avatar: em(50px);
 $gt-size-avatar-mobi: em(32px);
+$gt-size-textarea-min-height: em(82px);
 $gt-mask-z-index: 9999;
 $gt-breakpoint-mobile: 479px;
 
@@ -64,7 +65,7 @@ $gt-breakpoint-mobile: 479px;
 
     &.is--active {
       color: var(--gt-color-link-active);
-      cursor: default !important;
+      cursor: default;
 
       &:hover {
         color: var(--gt-color-link-active);
@@ -73,7 +74,7 @@ $gt-breakpoint-mobile: 479px;
   }
 
   .hide {
-    display: none !important;
+    display: none;
   }
 
   .gt {
@@ -382,7 +383,7 @@ $gt-breakpoint-mobile: 479px;
         box-sizing: border-box;
         display: block;
         width: 100%;
-        min-height: em(82px);
+        min-height: $gt-size-textarea-min-height;
         max-height: em(240px);
         padding: em(12px);
         font-size: em(14px);
@@ -400,6 +401,7 @@ $gt-breakpoint-mobile: 479px;
       }
 
       &-preview {
+        min-height: $gt-size-textarea-min-height;
         padding: em(12px);
         background-color: var(--gt-color-input-bg);
         border: 1px solid var(--gt-color-input-border);
@@ -510,7 +512,6 @@ $gt-breakpoint-mobile: 479px;
       }
 
       &-date {
-        margin-left: em(8px);
         color: var(--gt-color-sub);
       }
 
@@ -537,7 +538,8 @@ $gt-breakpoint-mobile: 479px;
       }
 
       &-body {
-        color: var(--gt-color-comment-txt) !important;
+        color: var(--gt-color-comment-txt);
+        background-color: inherit;
 
         .email-hidden-toggle a {
           display: inline-block;

@@ -1,3 +1,5 @@
+[ENGLISH](./README.md) | 简体中文
+
 # Gitalk React
 
 使用 TypeScript, React 和 Vite 重新实现 [Gitalk](https://github.com/gitalk/gitalk) —— 基于 Github 议题的评论组件。
@@ -6,8 +8,14 @@
 
 ## 与原版的区别
 
-- 不兼容旧版浏览器：仅保证兼容支持 [ES2020](https://caniuse.com/?feats=mdn-javascript_operators_optional_chaining,mdn-javascript_operators_nullish_coalescing,mdn-javascript_builtins_globalthis,es6-module-dynamic-import,bigint,mdn-javascript_builtins_promise_allsettled,mdn-javascript_builtins_string_matchall,mdn-javascript_statements_export_namespace,mdn-javascript_operators_import_meta) 的现代浏览器。
-- 依赖 React 运行时环境：`react >= 16.8.0 && react-dom >= 16.8.0`。
+- **不兼容旧版浏览器**：仅保证兼容支持 [ES2020](https://caniuse.com/?feats=mdn-javascript_operators_optional_chaining,mdn-javascript_operators_nullish_coalescing,mdn-javascript_builtins_globalthis,es6-module-dynamic-import,bigint,mdn-javascript_builtins_promise_allsettled,mdn-javascript_builtins_string_matchall,mdn-javascript_statements_export_namespace,mdn-javascript_operators_import_meta) 的现代浏览器。
+- **依赖 React 运行时环境**：`react >= 16.8.0 && react-dom >= 16.8.0`。
+
+## 开发中的功能
+
+- [ ] Feature: 支持在 Gitalk 编辑自己发表的评论。
+- [ ] refactor: 逐渐移除对非必要三方库的依赖。减少构建包的体积。
+- [ ] test: 添加自动化测试流程。提升项目的健壮性。
 
 ## 快速开始
 
@@ -152,6 +160,60 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 ### onCreateComment `(comment: CommentType) => void`
 
 创建评论**成功时**调用的回调方法。
+
+## 主题样式
+
+通过设置 CSS 变量，您可以快速地将 Gitalk 的主题颜色修改为适配您站点的样式。
+
+当您引入浅色主题 `import 'gitalk-react/gitalk.css'` 时，默认的 CSS 变量如下：
+
+```css
+.gt-container {
+  --gt-theme-mode: light;
+  --gt-color-main: #6190e8;
+  --gt-color-main-lighter: rgb(186.0386740331, 206.5524861878, 244.9613259669);
+  --gt-color-sub: #a1a1a1;
+  --gt-color-loader: #999;
+  --gt-color-error: #ff3860;
+  --gt-color-hr: #e9e9e9;
+  --gt-color-input-border: rgb(0 0 0 / 10%);
+  --gt-color-input-bg: #f6f6f6;
+  --gt-color-input-bg-lighter: hsl(0, 0%, 146.4705882353%);
+  --gt-color-comment-bg: #f9f9f9;
+  --gt-color-comment-bg-darker: rgb(243.9, 243.9, 243.9);
+  --gt-color-comment-adminbg: #f6f9fe;
+  --gt-color-comment-txt: #333;
+  --gt-color-link-active: #333;
+  --gt-color-btn: #fff;
+  --gt-color-btn-darker: rgb(242.25, 242.25, 242.25);
+  --gt-color-popbg: #fff;
+}
+```
+
+引入深色主题 `import 'gitalk-react/gitalk-dark.css'` 时，默认的 CSS 变量如下：
+
+```css
+.gt-container {
+  --gt-theme-mode: dark;
+  --gt-color-main: #6190e8;
+  --gt-color-main-lighter: rgb(186.0386740331, 206.5524861878, 244.9613259669);
+  --gt-color-sub: #a1a1a1;
+  --gt-color-loader: #999;
+  --gt-color-error: #ff3860;
+  --gt-color-hr: #e9e9e9;
+  --gt-color-input-border: rgb(0 0 0 / 10%);
+  --gt-color-input-bg: #f6f6f6;
+  --gt-color-input-bg-lighter: hsl(0, 0%, 146.4705882353%);
+  --gt-color-comment-bg: #f9f9f9;
+  --gt-color-comment-bg-darker: rgb(243.9, 243.9, 243.9);
+  --gt-color-comment-adminbg: #f6f9fe;
+  --gt-color-comment-txt: #333;
+  --gt-color-link-active: #333;
+  --gt-color-btn: #fff;
+  --gt-color-btn-darker: rgb(242.25, 242.25, 242.25);
+  --gt-color-popbg: #fff;
+}
+```
 
 ## 开发
 

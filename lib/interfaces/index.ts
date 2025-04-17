@@ -28,8 +28,3 @@ export type Comment = Pick<
     }[];
   };
 };
-
-export interface GraphQLResponse<T> {
-  status: number;
-  data: T;
-}

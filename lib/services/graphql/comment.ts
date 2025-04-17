@@ -1,7 +1,7 @@
 import { type GitalkProps } from "../../gitalk";
-import type { Comment, GraphQLResponse } from "../../interfaces";
+import type { Comment } from "../../interfaces";
 
-export type IssueCommentsQLResponse = GraphQLResponse<{
+export interface IssueCommentsQLResponse {
   repository: {
     issue: {
       comments: {
@@ -26,7 +26,7 @@ export type IssueCommentsQLResponse = GraphQLResponse<{
       };
     };
   };
-}>;
+}
 
 export const getIssueCommentsQL = ({
   pagerDirection,
