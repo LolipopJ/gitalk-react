@@ -69,15 +69,15 @@ Gitalk 依赖于 Github OAuth App 实现登录鉴权，您需要首先[注册一
 
 **必填项**。Github OAuth App 的 Secret 密钥。
 
-### owner
+### owner `string`
 
 **必填项**。Github 用户名。
 
-### repo
+### repo `string`
 
 **必填项**。Github 仓库名。需要是公开的仓库
 
-### admin
+### admin `string[]`
 
 **必填项**。Gitalk 管理员列表。可以是 Github 仓库的拥有者和协作者：拥有对此仓库**写权限**的用户。
 
@@ -216,7 +216,7 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 }
 ```
 
-## 开发
+## 开发者
 
 在项目根目录新建 `.env.local` 文件，添加开发用环境变量如下：
 
@@ -228,8 +228,30 @@ VITE_REPO_NAME="YOUR_REPO_NAME"
 VITE_ADMIN='["YOUR_GITHUB_USERNAME"]'
 ```
 
-执行 `yarn dev` 命令，在浏览器中调试开发。
+### 开发
 
-执行 `yarn lint` 命令，检查并修复代码的质量与格式问题。
+在浏览器中调试开发：
 
-执行 `yarn build` 命令，打包构建组件。
+```bash
+yarn dev
+```
+
+### 质量检查
+
+检查并修复代码的质量与格式问题：
+
+```bash
+yarn lint
+```
+
+### 构建
+
+打包构建组件：
+
+```bash
+yarn build
+```
+
+## 许可证
+
+[MIT](./LICENSE)

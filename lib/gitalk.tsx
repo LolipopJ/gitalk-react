@@ -178,7 +178,17 @@ export interface GitalkProps
    * @deprecated use `defaultUser`
    */
   defaultAuthor?: IssueCommentsQLResponse["repository"]["issue"]["comments"]["nodes"][number]["author"];
+  /**
+   * Callback method invoked when updating the number of comments.
+   *
+   * @param count comments number
+   */
   updateCountCallback?: (count: number) => void;
+  /**
+   * Callback method invoked when a new comment is successfully created.
+   *
+   * @param comment created comment
+   */
   onCreateComment?: (comment: CommentType) => void;
 }
 
