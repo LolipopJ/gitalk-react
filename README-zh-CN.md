@@ -1,6 +1,11 @@
+基于 Github 议题和 React 的现代评论组件。
+
 [ENGLISH](./README.md) | 简体中文
 
 # Gitalk React
+
+[![NPM][npm-version-image]][npm-version-url]
+[![gzip-size][gzip-size]][gzip-url]
 
 使用 TypeScript, React 和 Vite 重新实现 [Gitalk](https://github.com/gitalk/gitalk) —— 基于 Github 议题的评论组件。
 
@@ -255,3 +260,8 @@ yarn build
 ## 许可证
 
 [MIT](./LICENSE)
+
+[npm-version-image]: https://img.shields.io/npm/v/gitalk-react.svg?style=flat-square
+[npm-version-url]: https://www.npmjs.com/package/gitalk-react
+[gzip-size]: https://img.badgesize.io/https://unpkg.com/gitalk-react/dist/gitalk.umd.cjs?compression=gzip&style=flat-square
+[gzip-url]: https://unpkg.com/gitalk-react/dist/gitalk.umd.cjs

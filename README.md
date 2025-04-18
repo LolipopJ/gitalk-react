@@ -1,6 +1,11 @@
+Modern comment component based on GitHub Issue and React.
+
 ENGLISH | [简体中文](./README-zh-CN.md)
 
 # Gitalk React
+
+[![NPM][npm-version-image]][npm-version-url]
+[![gzip-size][gzip-size]][gzip-url]
 
 Reimplementing [Gitalk](https://github.com/gitalk/gitalk) with TypeScript, React, and Vite — a comment component based on GitHub issues.
 
@@ -255,3 +260,8 @@ yarn build
 ## License
 
 [MIT](./LICENSE)
+
+[npm-version-image]: https://img.shields.io/npm/v/gitalk-react.svg?style=flat-square
+[npm-version-url]: https://www.npmjs.com/package/gitalk-react
+[gzip-size]: https://img.badgesize.io/https://unpkg.com/gitalk-react/dist/gitalk.umd.cjs?compression=gzip&style=flat-square
+[gzip-url]: https://unpkg.com/gitalk-react/dist/gitalk.umd.cjs
