@@ -132,7 +132,7 @@ const App = () => {
         style={{
           marginTop: 16,
           padding: 32,
-          background: theme === "light" ? "#eee" : "#111",
+          background: theme === "light" ? "#fff" : "#171717",
         }}
       >
         {!!issueNumber && (

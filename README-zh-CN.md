@@ -16,6 +16,7 @@
 - [ ] Feature: 支持在 Gitalk 编辑自己发表的评论。
 - [ ] refactor: 逐渐移除对非必要三方库的依赖。减少构建包的体积。
 - [ ] test: 添加自动化测试流程。提升项目的健壮性。
+- [ ] chore: 部署预览环境。
 
 ## 快速开始
 
@@ -171,8 +172,8 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 .gt-container {
   --gt-theme-mode: light;
   --gt-color-text: #171717;
-  --gt-color-main: #6190e8;
-  --gt-color-main-lighter: rgb(186.0386740331, 206.5524861878, 244.9613259669);
+  --gt-color-main: #3b82f6;
+  --gt-color-main-lighter: rgb(107.7609756098, 161.0975609756, 248.2390243902);
   --gt-color-sub: #a1a1a1;
   --gt-color-loader: #999;
   --gt-color-error: #ff3860;
@@ -186,7 +187,6 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
   --gt-color-comment-txt: #333;
   --gt-color-link-active: #333;
   --gt-color-btn: #fff;
-  --gt-color-btn-darker: rgb(242.25, 242.25, 242.25);
   --gt-color-popbg: #fff;
 }
 ```
@@ -197,8 +197,8 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 .gt-container {
   --gt-theme-mode: dark;
   --gt-color-text: #e9e9e9;
-  --gt-color-main: rgb(74.7403314917, 128.361878453, 228.7596685083);
-  --gt-color-main-lighter: #6190e8;
+  --gt-color-main: #6366f1;
+  --gt-color-main-lighter: rgb(122.4, 124.95, 243.1);
   --gt-color-sub: #9e9e9e;
   --gt-color-loader: #777;
   --gt-color-error: #ef4444;
@@ -212,7 +212,6 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
   --gt-color-comment-txt: #fafafa;
   --gt-color-link-active: #fafafa;
   --gt-color-btn: #eee;
-  --gt-color-btn-darker: rgb(225.25, 225.25, 225.25);
   --gt-color-popbg: #171717;
 }
 ```

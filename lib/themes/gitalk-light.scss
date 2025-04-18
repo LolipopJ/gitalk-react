@@ -5,8 +5,8 @@
 .gt-container {
   --gt-theme-mode: light;
   --gt-color-text: #171717;
-  --gt-color-main: #6190e8;
-  --gt-color-main-lighter: #{color.adjust(#6190e8, $lightness: 20%)};
+  --gt-color-main: #3b82f6;
+  --gt-color-main-lighter: #{color.adjust(#3b82f6, $lightness: 10%)};
   --gt-color-sub: #a1a1a1;
   --gt-color-loader: #999;
   --gt-color-error: #ff3860;
@@ -20,6 +20,5 @@
   --gt-color-comment-txt: #333;
   --gt-color-link-active: #333;
   --gt-color-btn: #fff;
-  --gt-color-btn-darker: #{color.adjust(#fff, $lightness: -5%)};
   --gt-color-popbg: #fff;
 }

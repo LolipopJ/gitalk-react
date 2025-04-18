@@ -954,7 +954,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         <p
           dangerouslySetInnerHTML={{
             __html: polyglot.t("no-found-related", {
-              link: `<a href="https://github.com/${owner}/${repo}/issues">Issues</a>`,
+              link: `<a href="https://github.com/${owner}/${repo}/issues" target="_blank" rel="noopener noreferrer">Issues</a>`,
             }),
           }}
         />
@@ -1030,25 +1030,26 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
                 text={polyglot.t("support-markdown")}
               />
             </a>
-            {user && (
-              <Button
-                className="gt-btn-public"
-                onClick={runCreateIssueComment}
-                text={polyglot.t("comment")}
-                isLoading={createIssueCommentLoading}
-              />
-            )}
 
             <Button
-              className="gt-btn-preview"
+              className="gt-btn-preview gt-btn--secondary"
               onClick={onCommentInputPreview}
               text={
                 isPreviewComment ? polyglot.t("edit") : polyglot.t("preview")
               }
               isLoading={getCommentHtmlLoading}
-              disabled={false}
+              disabled={!inputComment}
             />
-            {!user && (
+
+            {user ? (
+              <Button
+                className="gt-btn-public"
+                onClick={runCreateIssueComment}
+                text={polyglot.t("comment")}
+                isLoading={createIssueCommentLoading}
+                disabled={createIssueCommentLoading || !inputComment}
+              />
+            ) : (
               <Button
                 className="gt-btn-login"
                 onClick={onLogin}

@@ -13,17 +13,23 @@ const Button: React.FC<ButtonProps> = ({
   text,
   isLoading = false,
   className = "",
-  disabled,
+  style,
+  disabled: propsDisabled,
   ...restProps
-}) => (
-  <button
-    className={`gt-btn ${className}`}
-    disabled={disabled !== undefined ? disabled : isLoading}
-    {...restProps}
-  >
-    <span className="gt-btn-text">{text}</span>
-    {isLoading && <span className="gt-btn-loading gt-spinner" />}
-  </button>
-);
+}) => {
+  const disabled = propsDisabled !== undefined ? propsDisabled : isLoading;
+
+  return (
+    <button
+      className={`gt-btn ${className}`}
+      style={{ cursor: disabled ? "not-allowed" : undefined, ...style }}
+      disabled={disabled}
+      {...restProps}
+    >
+      <span className="gt-btn-text">{text}</span>
+      {isLoading && <span className="gt-btn-loading gt-spinner" />}
+    </button>
+  );
+};
 
 export default Button;

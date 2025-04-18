@@ -200,6 +200,24 @@ $gt-breakpoint-mobile: 479px;
       background-color: var(--gt-color-main);
       border: 1px solid var(--gt-color-main);
       border-radius: $gt-size-border-radius;
+      transition: all ease 0.25s;
+
+      &:hover {
+        background-color: var(--gt-color-main-lighter);
+        border-color: var(--gt-color-main-lighter);
+      }
+
+      &--secondary {
+        color: var(--gt-color-main-lighter);
+        background-color: transparent;
+        border-color: var(--gt-color-main-lighter);
+
+        &:hover {
+          color: var(--gt-color-main);
+          background-color: transparent;
+          border-color: var(--gt-color-main);
+        }
+      }
 
       &-text {
         font-weight: 400;
@@ -222,26 +240,6 @@ $gt-breakpoint-mobile: 479px;
       &-login {
         margin-right: 0;
       }
-
-      &-preview {
-        color: var(--gt-color-main);
-        background-color: var(--gt-color-btn);
-
-        &:hover {
-          background-color: var(--gt-color-btn-darker);
-          border-color: var(--gt-color-main-lighter);
-        }
-      }
-
-      &-public {
-        &:hover {
-          background-color: var(--gt-color-main-lighter);
-          border-color: var(--gt-color-main-lighter);
-        }
-      }
-
-      // &-loadmore {
-      // }
     }
 
     &-error {
@@ -395,9 +393,10 @@ $gt-breakpoint-mobile: 479px;
         background-color: var(--gt-color-input-bg);
         border: 1px solid var(--gt-color-input-border);
         border-radius: $gt-size-border-radius;
-        transition: all 0.25s ease;
+        transition: all ease 0.25s;
 
-        &:hover {
+        &:hover,
+        &:focus {
           background-color: var(--gt-color-input-bg-lighter);
         }
       }
@@ -412,17 +411,13 @@ $gt-breakpoint-mobile: 479px;
 
       &-controls {
         position: relative;
+        display: flex;
+        align-items: center;
         margin: em(12px) 0 0;
 
-        @include clearfix;
-
-        @include mobile {
-          margin: 0;
-        }
-
         &-tip {
+          margin-right: auto;
           font-size: em(14px);
-          vertical-align: sub;
           color: var(--gt-color-main);
           text-decoration: none;
 
@@ -432,13 +427,14 @@ $gt-breakpoint-mobile: 479px;
         }
 
         .gt-btn {
-          float: right;
-          margin-left: em(20px);
+          margin-left: em(12px);
 
           @include mobile {
-            float: none;
             width: 100%;
-            margin: em(12px) 0 0;
+
+            &:first-of-type {
+              margin-left: 0;
+            }
           }
         }
       }
