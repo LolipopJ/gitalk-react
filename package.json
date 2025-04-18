@@ -29,6 +29,7 @@
     "./gitalk-light.css": "./dist/gitalk-light.css",
     "./gitalk-dark.css": "./dist/gitalk-dark.css"
   },
+  "types": "./dist/gitalk.d.ts",
   "scripts": {
     "dev": "vite",
     "build": "npm run build:ts && npm run build:scss",
