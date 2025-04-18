@@ -15,10 +15,13 @@ Developed for modern browsers, focusing on reducing build size and enhancing dev
 
 - **Not compatible with older browsers**: Only guarantees compatibility with modern browsers that support [ES2020](https://caniuse.com/?feats=mdn-javascript_operators_optional_chaining,mdn-javascript_operators_nullish_coalescing,mdn-javascript_builtins_globalthis,es6-module-dynamic-import,bigint,mdn-javascript_builtins_promise_allsettled,mdn-javascript_builtins_string_matchall,mdn-javascript_statements_export_namespace,mdn-javascript_operators_import_meta).
 - **Depends on React runtime environment**: `react >= 16.8.0 && react-dom >= 16.8.0`.
+- **Some default values for parameters have changed**: Please pay attention when migrating to this component.
+  - `id`: Gitalk uses `location.href` as the default value, while Gitalk React uses `location.pathname` as the default value.
+  - `defaultAuthor`: Can still be used. Gitalk React has added a new parameter `defaultUser` to set the default user for comments, keeping the field naming consistent with the GitHub API.
 
 ## Features in Development
 
-- [ ] Feature: Support editing comments published by the user in Gitalk.
+- [ ] Feature: Support editing comments published by the user in Gitalk React.
 - [ ] refactor: Gradually remove dependencies on non-essential third-party libraries to reduce build size.
 - [ ] test: Add automated testing processes to enhance project robustness.
 - [ ] chore: Deploy preview environment.
@@ -44,15 +47,15 @@ import 'gitalk-react/gitalk-dark.css'
 import Gitalk from 'gitalk-react'
 ```
 
-Gitalk relies on GitHub OAuth App for login authentication; you need to first [register an application](https://github.com/settings/applications/new). Please note that you must set your site domain as the value of the `Authorization callback URL` field, such as `https://yourdomain.com/site` or for development environments `http://localhost:5432`.
+Gitalk React relies on GitHub OAuth App for login authentication; you need to first [register an application](https://github.com/settings/applications/new). Please note that you must set your site domain as the value of the `Authorization callback URL` field, such as `https://yourdomain.com/site` or for development environments `http://localhost:5432`.
 
-When using the Gitalk component, fill in the necessary configuration items:
+When using the Gitalk React component, fill in the necessary configuration items:
 
 - `clientId`: The ID of your GitHub OAuth App.
 - `clientSecret`: The Secret key of your GitHub OAuth App.
 - `owner`: Your GitHub username.
 - `repo`: The name of your GitHub repository. It must be a public repository.
-- `admin`: A list of Gitalk administrators; only those listed can initialize comment topics. This can include the owner and collaborators of the GitHub repository.
+- `admin`: A list of Gitalk React administrators; only those listed can initialize comment topics. This can include the owner and collaborators of the GitHub repository.
 
 ```tsx
 <Gitalk
@@ -84,21 +87,21 @@ When using the Gitalk component, fill in the necessary configuration items:
 
 ### admin `string[]`
 
-**Required**. A list of Gitalk administrators. This can include users who have write access to this repository: owners and collaborators.
+**Required**. A list of Gitalk React administrators. This can include users who have **write access** to this repository: owners and collaborators.
 
 ### id `string = location.pathname`
 
 A unique identifier for the comment topic; length cannot exceed 50 characters.
 
-When creating a comment topic, Gitalk automatically uses this parameter as a label item for the comment topic and defaults to fetching comments based on it.
+When creating a comment topic, Gitalk React automatically uses this parameter as a label item for the comment topic and defaults to fetching comments based on it.
 
-For blog-type sites, it is recommended to use the page's slug as this parameter.
+For blog-type sites, it is recommended to use the page's `slug` as this parameter.
 
 ### number `number`
 
 The number of the comment topic.
 
-If this parameter is specified, then Gitalk will fetch comments based on it rather than using the identifier.
+If this parameter is specified, then Gitalk React will fetch comments based on it rather than using the identifier.
 
 ### labels `string[] = ["Gitalk"]`
 
@@ -114,9 +117,9 @@ The content of the comment topic.
 
 ### language `string = navigator.language`
 
-The language used by Gitalk.
+The language used by Gitalk React.
 
-Available languages include: "de" | "en" | "es-ES" | "fa" | "fr" | "ja" | "ko" | "pl" | "ru" | "zh-CN" | "zh-TW".
+Available languages include: `"de" | "en" | "es-ES" | "fa" | "fr" | "ja" | "ko" | "pl" | "ru" | "zh-CN" | "zh-TW"`.
 
 ### perPage `number = 10`
 
@@ -124,17 +127,17 @@ The number of comments loaded per page; cannot exceed 100.
 
 ### pagerDirection `"last" | "first" = "last"`
 
-The sorting method for comments. last indicates descending order by creation time, while first indicates ascending order by creation time.
+The sorting method for comments. `last` indicates descending order by creation time, while `first` indicates ascending order by creation time.
 
-### createIssueManually `boolean = true`
+### createIssueManually `boolean = false`
 
-When a comment topic does not exist, Gitalk will automatically create a new one for you.
+When a comment topic does not exist, Gitalk React will automatically create a new one for you.
 
-If you prefer to create a comment topic manually by clicking a button after logging in as an administrator, set this to false.
+If you prefer to create a comment topic manually by clicking a button after logging in as an administrator, set this to `true`.
 
 ### enableHotKey `boolean = true`
 
-Whether to enable hotkeys like cmd + enter or ctrl + enter to create comments.
+Whether to enable hotkeys like `cmd + enter` or `ctrl + enter` to publish comments.
 
 ### distractionFreeMode `boolean = false`
 
@@ -144,7 +147,7 @@ Whether to enable full-screen overlay effects similar to Facebook's comment box.
 
 Animation effects for the comment list.
 
-Default values (referenced effects can be found here):
+Default values (referenced effects can be found [here](https://github.com/joshwcomeau/react-flip-move/blob/master/documentation/enter_leave_animations.md)):
 
 ```json
 {
@@ -157,7 +160,21 @@ Default values (referenced effects can be found here):
 
 ### proxy `string = "https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token"`
 
-Reverse proxy for authenticating with Github OAuth App that supports CORS. Why is it needed?
+Reverse proxy for authenticating with Github OAuth App that supports CORS. [Why needed?](https://github.com/isaacs/github/issues/330)
+
+### defaultUser `{ avatar_url: string; login: string; html_url: string }`
+
+The default user used when the comment user does not exist.
+
+`avatar_url` is the user's avatar URL, `login` is the username, and `html_url` is the page to which users are redirected when clicked. Default values:
+
+```json
+{
+  "avatar_url": "//avatars1.githubusercontent.com/u/29697133?s=50",
+  "login": "null",
+  "html_url": ""
+}
+```
 
 ### updateCountCallback `(count: number) => void`
 
@@ -169,7 +186,7 @@ Callback method invoked when a comment is successfully created.
 
 ## Theme Styles
 
-You can quickly modify Gitalk's theme colors to match your site's style by setting CSS variables.
+You can quickly modify Gitalk React's theme colors to match your site's style by setting CSS variables.
 
 When you import light theme with `import 'gitalk-react/gitalk.css'`, the default CSS variables are as follows:
 

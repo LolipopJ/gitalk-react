@@ -15,10 +15,13 @@
 
 - **不兼容旧版浏览器**：仅保证兼容支持 [ES2020](https://caniuse.com/?feats=mdn-javascript_operators_optional_chaining,mdn-javascript_operators_nullish_coalescing,mdn-javascript_builtins_globalthis,es6-module-dynamic-import,bigint,mdn-javascript_builtins_promise_allsettled,mdn-javascript_builtins_string_matchall,mdn-javascript_statements_export_namespace,mdn-javascript_operators_import_meta) 的现代浏览器。
 - **依赖 React 运行时环境**：`react >= 16.8.0 && react-dom >= 16.8.0`。
+- **部分参数的默认值发生了变化**：迁移到此组件时请留意。
+  - `id`：Gitalk 使用 `location.href` 作为默认值，Gitalk React 使用 `location.pathname` 作为默认值。
+  - `defaultAuthor`：仍然可以使用。Gitalk React 新增了参数项 `defaultUser` 来设置评论的默认用户，保持字段命名与 Github API 一致。
 
 ## 开发中的功能
 
-- [ ] Feature: 支持在 Gitalk 编辑自己发表的评论。
+- [ ] Feature: 支持在 Gitalk React 编辑自己发表的评论。
 - [ ] refactor: 逐渐移除对非必要三方库的依赖。减少构建包的体积。
 - [ ] test: 添加自动化测试流程。提升项目的健壮性。
 - [ ] chore: 部署预览环境。
@@ -33,7 +36,7 @@ npm install gitalk-react
 
 ### 使用
 
-在项目中引入 Gitalk 的样式与组件：
+在项目中引入 Gitalk React 的样式与组件：
 
 ```tsx
 // 引入浅色模式样式
@@ -44,15 +47,15 @@ import 'gitalk-react/gitalk-dark.css'
 import Gitalk from 'gitalk-react'
 ```
 
-Gitalk 依赖于 Github OAuth App 实现登录鉴权，您需要首先[注册一个应用](https://github.com/settings/applications/new)。请注意，您必须将站点域名作为 `Authorization callback URL` 字段的值，例如 `https://yourdomain.com/site` 或开发环境下的 `http://localhost:5432`。
+Gitalk React 依赖于 Github OAuth App 实现登录鉴权，您需要首先[注册一个应用](https://github.com/settings/applications/new)。请注意，您必须将站点域名作为 `Authorization callback URL` 字段的值，例如 `https://yourdomain.com/site` 或开发环境下的 `http://localhost:5432`。
 
-使用 Gitalk 组件，填写必要的配置项：
+使用 Gitalk React 组件，填写必要的配置项：
 
 - `clientId`：Github OAuth App 的 ID。
 - `clientSecret`：Github OAuth App 的 Secret 密钥。
 - `owner`：Github 用户名。
 - `repo`：Github 仓库名。需要是公开的仓库。
-- `admin`：Gitalk 管理员列表，只有列表里的人可以初始化评论议题。可以是 Github 仓库的拥有者和协作者。
+- `admin`：Gitalk React 管理员列表，只有列表里的人可以初始化评论议题。可以是 Github 仓库的拥有者和协作者。
 
 ```tsx
 <Gitalk
@@ -84,13 +87,13 @@ Gitalk 依赖于 Github OAuth App 实现登录鉴权，您需要首先[注册一
 
 ### admin `string[]`
 
-**必填项**。Gitalk 管理员列表。可以是 Github 仓库的拥有者和协作者：拥有对此仓库**写权限**的用户。
+**必填项**。Gitalk React 管理员列表。可以是 Github 仓库的拥有者和协作者：拥有对此仓库**写权限**的用户。
 
 ### id `string = location.pathname`
 
 评论议题的唯一标识符，长度不能超过 50。
 
-Gitalk 在创建评论议题时，自动将此参数作为评论议题的标签项，并默认通过它来获取评论议题。
+Gitalk React 在创建评论议题时，自动将此参数作为评论议题的标签项，并默认通过它来获取评论议题。
 
 对于博客等类型的站点，推荐将页面的 `slug` 作为参数。
 
@@ -98,7 +101,7 @@ Gitalk 在创建评论议题时，自动将此参数作为评论议题的标签�
 
 评论议题的编号。
 
-如果指定了此参数，那么 Gitalk 将通过它来获取评论议题，而非标识符。
+如果指定了此参数，那么 Gitalk React 将通过它来获取评论议题，而非标识符。
 
 ### labels `string[] = ["Gitalk"]`
 
@@ -114,7 +117,7 @@ Gitalk 在创建评论议题时，自动将此参数作为评论议题的标签�
 
 ### language `string = navigator.language`
 
-Gitalk 使用的语言。
+Gitalk React 使用的语言。
 
 可用的语言包括：`"de" | "en" | "es-ES" | "fa" | "fr" | "ja" | "ko" | "pl" | "ru" | "zh-CN" | "zh-TW"`。
 
@@ -126,15 +129,15 @@ Gitalk 使用的语言。
 
 评论排序的方式。`last` 表示按评论创建时间倒叙排列，`first` 表示按评论创建时间正叙排列。
 
-### createIssueManually `boolean = true`
+### createIssueManually `boolean = false`
 
-当评论议题不存在时，Gitalk 将会自动为您创建一个新的评论议题。
+当评论议题不存在时，Gitalk React 将会自动为您创建一个新的评论议题。
 
-如果您希望在管理员登录后，手动点击按钮以创建评论议题，则可以将其设置为 `false`。
+如果您希望以管理员身份登录后，手动点击按钮来创建评论议题，则可以将其设置为 `true`。
 
 ### enableHotKey `boolean = true`
 
-是否启用热键 `cmd + enter` 或 `ctrl + enter` 来创建评论。
+是否启用热键 `cmd + enter` 或 `ctrl + enter` 来发表评论。
 
 ### distractionFreeMode `boolean = false`
 
@@ -159,6 +162,20 @@ Gitalk 使用的语言。
 
 Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](https://github.com/isaacs/github/issues/330)
 
+### defaultUser `{ avatar_url: string; login: string; html_url: string }`
+
+评论用户不存在时，使用的默认用户。
+
+`avatar_url` 为用户头像地址，`login` 为用户名，`html_url` 为点击用户后跳转的页面。默认值：
+
+```json
+{
+  "avatar_url": "//avatars1.githubusercontent.com/u/29697133?s=50",
+  "login": "null",
+  "html_url": ""
+}
+```
+
 ### updateCountCallback `(count: number) => void`
 
 评论数量更新的调用的回调方法。
@@ -169,7 +186,7 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 
 ## 主题样式
 
-通过设置 CSS 变量，您可以快速地将 Gitalk 的主题颜色修改为适配您站点的样式。
+通过设置 CSS 变量，您可以快速地将 Gitalk React 的主题颜色修改为适配您站点的样式。
 
 当您引入浅色主题 `import 'gitalk-react/gitalk.css'` 时，默认的 CSS 变量如下：
 
