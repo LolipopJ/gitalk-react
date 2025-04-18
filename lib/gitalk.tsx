@@ -78,8 +78,6 @@ export interface GitalkProps
   /**
    * The issue ID of the page.
    * If the number attribute is not defined, issue will be located using id.
-   *
-   * @default -1
    */
   number?: number;
   /**
@@ -202,7 +200,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     repo,
     admin,
     id: propsIssueId = location.href,
-    number: issueNumber = -1,
+    number: propsIssueNumber,
     labels: issueBaseLabels = DEFAULT_LABELS,
     title: issueTitle = document.title,
     body: issueBody = location.href +
@@ -230,6 +228,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     ...restProps
   } = props;
   const issueId = propsIssueId.slice(0, 50);
+  const issueNumber =
+    propsIssueNumber && propsIssueNumber > 0 ? propsIssueNumber : undefined;
   const commentsPerPage =
     propsPerPage > 100 ? 100 : propsPerPage < 0 ? 10 : propsPerPage;
   const defaultUser = propsDefaultUser
@@ -481,7 +481,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     loading: getCommentsLoading,
   } = useRequest(
     async (): Promise<CommentType[]> => {
-      const { number: issueNumber } = issue as IssueType;
+      const { number: currentIssueNumber } = issue as IssueType;
       const from = (commentsPage - 1) * commentsPerPage + 1;
       const to = commentsPage * commentsPerPage;
 
@@ -495,7 +495,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           await octokit.graphql(query, {
             owner,
             repo,
-            id: issueNumber,
+            id: currentIssueNumber,
             pageSize: commentsPerPage,
             ...(commentsCursor ? { cursor: commentsCursor } : {}),
           });
@@ -550,7 +550,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           {
             owner,
             repo,
-            issue_number: issueNumber,
+            issue_number: currentIssueNumber,
             page: commentsPage,
             per_page: commentsPerPage,
             headers: {
@@ -608,14 +608,14 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     run: runCreateIssueComment,
   } = useRequest(
     async (): Promise<CommentType[]> => {
-      const { number: issueNumber } = issue as IssueType;
+      const { number: currentIssueNumber } = issue as IssueType;
 
       const createIssueCommentRes = await octokit.request(
         "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
         {
           owner,
           repo,
-          issue_number: issueNumber,
+          issue_number: currentIssueNumber,
           body: inputComment,
           headers: {
             accept: "application/vnd.github.v3.full+json",

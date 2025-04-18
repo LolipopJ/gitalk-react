@@ -94,7 +94,7 @@ When creating a comment topic, Gitalk automatically uses this parameter as a lab
 
 For blog-type sites, it is recommended to use the page's slug as this parameter.
 
-### number `number = -1`
+### number `number`
 
 The number of the comment topic.
 
