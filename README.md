@@ -16,7 +16,7 @@ Developed for modern browsers, focusing on reducing build size and enhancing dev
 - **Not compatible with older browsers**: Only guarantees compatibility with modern browsers that support [ES2020](https://caniuse.com/?feats=mdn-javascript_operators_optional_chaining,mdn-javascript_operators_nullish_coalescing,mdn-javascript_builtins_globalthis,es6-module-dynamic-import,bigint,mdn-javascript_builtins_promise_allsettled,mdn-javascript_builtins_string_matchall,mdn-javascript_statements_export_namespace,mdn-javascript_operators_import_meta).
 - **Depends on React runtime environment**: `react >= 16.8.0 && react-dom >= 16.8.0`.
 - **Some default values for parameters have changed**: Please pay attention when migrating to this component.
-  - `id`: Gitalk uses `location.href` as the default value, while Gitalk React uses `location.pathname` as the default value.
+  - `id`: Gitalk uses `location.href` as the default value, while Gitalk React uses `location.host + location.pathname` as the default value, to avoid unexpected search parameters.
   - `defaultAuthor`: Can still be used. Gitalk React has added a new parameter `defaultUser` to set the default user for comments, keeping the field naming consistent with the GitHub API.
 
 ## Features in Development
@@ -89,7 +89,7 @@ When using the Gitalk React component, fill in the necessary configuration items
 
 **Required**. A list of Gitalk React administrators. This can include users who have **write access** to this repository: owners and collaborators.
 
-### id `string = location.pathname`
+### id `string = location.host + location.pathname`
 
 A unique identifier for the comment topic; length cannot exceed 50 characters.
 

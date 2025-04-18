@@ -72,7 +72,7 @@ export interface GitalkProps
    * The unique id of the page.
    * Length must less than 50.
    *
-   * @default location.pathname
+   * @default location.host + location.pathname
    */
   id?: string;
   /**
@@ -199,14 +199,15 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     owner,
     repo,
     admin,
-    id: propsIssueId = location.pathname,
+    id: propsIssueId = location.host + location.pathname,
     number: propsIssueNumber,
     labels: issueBaseLabels = DEFAULT_LABELS,
     title: issueTitle = document.title,
     body: issueBody = location.href +
-      document
+      "\n\n" +
+      (document
         ?.querySelector('meta[name="description"]')
-        ?.getAttribute("content") || "",
+        ?.getAttribute("content") ?? ""),
     language = navigator.language as Lang,
     perPage: propsPerPage = 10,
     pagerDirection = "last",

@@ -16,7 +16,7 @@
 - **不兼容旧版浏览器**：仅保证兼容支持 [ES2020](https://caniuse.com/?feats=mdn-javascript_operators_optional_chaining,mdn-javascript_operators_nullish_coalescing,mdn-javascript_builtins_globalthis,es6-module-dynamic-import,bigint,mdn-javascript_builtins_promise_allsettled,mdn-javascript_builtins_string_matchall,mdn-javascript_statements_export_namespace,mdn-javascript_operators_import_meta) 的现代浏览器。
 - **依赖 React 运行时环境**：`react >= 16.8.0 && react-dom >= 16.8.0`。
 - **部分参数的默认值发生了变化**：迁移到此组件时请留意。
-  - `id`：Gitalk 使用 `location.href` 作为默认值，Gitalk React 使用 `location.pathname` 作为默认值。
+  - `id`：Gitalk 使用 `location.href` 作为默认值，Gitalk React 使用 `location.host + location.pathname` 作为默认值，避免预期外的查询参数。
   - `defaultAuthor`：仍然可以使用。Gitalk React 新增了参数项 `defaultUser` 来设置评论的默认用户，保持字段命名与 Github API 一致。
 
 ## 开发中的功能
@@ -89,7 +89,7 @@ Gitalk React 依赖于 Github OAuth App 实现登录鉴权，您需要首先[注
 
 **必填项**。Gitalk React 管理员列表。可以是 Github 仓库的拥有者和协作者：拥有对此仓库**写权限**的用户。
 
-### id `string = location.pathname`
+### id `string = location.host + location.pathname`
 
 评论议题的唯一标识符，长度不能超过 50。
 
