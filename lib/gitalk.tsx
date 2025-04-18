@@ -471,7 +471,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       refreshDeps: [owner, repo, issueNumber, issueId],
       onBefore: () => {
         setIssue(undefined);
-        setInputComment("");
       },
     },
   );
@@ -1048,7 +1047,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
                 isPreviewComment ? polyglot.t("edit") : polyglot.t("preview")
               }
               isLoading={getCommentHtmlLoading}
-              disabled={!inputComment}
+              disabled={false}
             />
 
             {user ? (
