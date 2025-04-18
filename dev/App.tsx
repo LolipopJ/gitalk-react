@@ -1,23 +1,37 @@
 import { useRequest } from "ahooks";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ACCESS_TOKEN_KEY } from "../lib/constants";
-import Gitalk from "../lib/gitalk";
+import Gitalk, { type GitalkProps } from "../lib/gitalk";
 import { Issue } from "../lib/interfaces";
 import getOctokitInstance from "../lib/services/request";
-import logger from "../lib/utils/logger";
-
-const {
-  VITE_CLIENT_ID,
-  VITE_CLIENT_SECRET,
-  VITE_REPO_OWNER,
-  VITE_REPO_NAME,
-  VITE_ADMIN,
-} = import.meta.env;
-
-const PER_PAGE = 30;
+import { Logger } from "../lib/utils/logger";
 
 type Theme = "light" | "dark";
+
+const logger = new Logger({ prefix: "Gitalk Dev Page" });
+
+const GITALK_OPTIONS: GitalkProps = import.meta.env.PROD
+  ? {
+      clientID: "Ov23lizwQOGBomnxr5j1",
+      clientSecret: "c6c3a16df89ef55264fb34821c4e76fe4f75c77e",
+      owner: "LolipopJ",
+      repo: "gitalk-react",
+      admin: ["LolipopJ"],
+    }
+  : {
+      clientID: import.meta.env["VITE_CLIENT_ID"] ?? "Ov23lieS9XRg4Axl4x6P",
+      clientSecret:
+        import.meta.env["VITE_CLIENT_SECRET"] ??
+        "754ba9d5432e289457daad3f49fb88a87e3ca266",
+      owner: import.meta.env["VITE_REPO_OWNER"] ?? "LolipopJ",
+      repo: import.meta.env["VITE_REPO_NAME"] ?? "gitalk-react",
+      admin: import.meta.env["VITE_ADMIN"]
+        ? JSON.parse(import.meta.env["VITE_ADMIN"])
+        : ["LolipopJ"],
+    };
+
+const ISSUES_PER_PAGE = 30;
 
 const App = () => {
   const [issuesPage, setIssuesPage] = useState<number>(1);
@@ -39,8 +53,7 @@ const App = () => {
       setTheme("light");
     }
 
-    const initialIssueNumber =
-      Number(searchParams.get("issueNumber")) || undefined;
+    const initialIssueNumber = Number(searchParams.get("number")) || undefined;
     setIssueNumber(initialIssueNumber);
   }, []);
 
@@ -48,19 +61,23 @@ const App = () => {
     localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined,
   );
 
-  const { data: issues = [], loading: getIssuesLoading } = useRequest(
+  const {
+    data: issues = [],
+    mutate: setIssues,
+    loading: getIssuesLoading,
+  } = useRequest(
     async (): Promise<Issue[]> => {
-      const from = (issuesPage - 1) * PER_PAGE + 1;
-      const to = issuesPage * PER_PAGE;
+      const from = (issuesPage - 1) * ISSUES_PER_PAGE + 1;
+      const to = issuesPage * ISSUES_PER_PAGE;
 
       const getIssuesRes = await octokit.request(
         "GET /repos/{owner}/{repo}/issues",
         {
-          owner: VITE_REPO_OWNER,
-          repo: VITE_REPO_NAME,
+          owner: GITALK_OPTIONS.owner,
+          repo: GITALK_OPTIONS.repo,
           labels: "Gitalk",
           page: issuesPage,
-          per_page: PER_PAGE,
+          per_page: ISSUES_PER_PAGE,
         },
       );
 
@@ -68,7 +85,7 @@ const App = () => {
         const _issues = getIssuesRes.data;
         logger.s(`Get issues from ${from} to ${to} successfully:`, _issues);
 
-        if (_issues.length < PER_PAGE) {
+        if (_issues.length < ISSUES_PER_PAGE) {
           setIssuesLoaded(true);
         }
 
@@ -79,7 +96,7 @@ const App = () => {
       }
     },
     {
-      ready: !!VITE_REPO_OWNER && !!VITE_REPO_NAME && !issuesLoaded,
+      ready: !issuesLoaded,
       refreshDeps: [issuesPage],
       onSuccess: (data) => {
         if (!issueNumber) {
@@ -88,6 +105,14 @@ const App = () => {
       },
     },
   );
+
+  const selectedIssue = useMemo(
+    () => issues.find((issue) => issue.number === issueNumber),
+    [issueNumber, issues],
+  );
+  useEffect(() => {
+    logger.i("Current active issue:", selectedIssue);
+  }, [selectedIssue]);
 
   return (
     <div style={{ padding: 16 }}>
@@ -100,26 +125,38 @@ const App = () => {
         }}
       >
         <span>
-          Existed issues in repository {VITE_REPO_OWNER}/{VITE_REPO_NAME}:
+          Existed issues in repository {GITALK_OPTIONS.owner}/
+          {GITALK_OPTIONS.repo}:
         </span>
-        {issues.map(({ number }) => (
-          <a
-            key={number}
-            onClick={() => setIssueNumber(number)}
-            style={{
-              padding: "6px 12px",
-              border: "1px solid #333",
-              borderRadius: "6px",
-              cursor: "pointer",
-              backgroundColor: number === issueNumber ? "#efefef" : undefined,
-            }}
-          >
-            {number}
-          </a>
-        ))}
+        {issues.length
+          ? issues.map((issue) => {
+              const { number, title, html_url } = issue;
+
+              return (
+                <a
+                  key={number}
+                  title={html_url}
+                  onClick={() => setIssueNumber(number)}
+                  style={{
+                    padding: "6px 12px",
+                    border: "1px solid #333",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    backgroundColor:
+                      number === issueNumber ? "#efefef" : undefined,
+                  }}
+                >
+                  {title}
+                </a>
+              );
+            })
+          : getIssuesLoading
+            ? ""
+            : "NO ISSUE LOCATED"}
         <button
           onClick={() => setIssuesPage((prev) => prev + 1)}
           disabled={getIssuesLoading || issuesLoaded}
+          style={{ padding: "6px 12px" }}
         >
           {issuesLoaded
             ? "Issues loaded"
@@ -137,14 +174,13 @@ const App = () => {
       >
         {!!issueNumber && (
           <Gitalk
-            clientID={VITE_CLIENT_ID}
-            clientSecret={VITE_CLIENT_SECRET}
-            owner={VITE_REPO_OWNER}
-            repo={VITE_REPO_NAME}
-            admin={JSON.parse(VITE_ADMIN)}
+            {...GITALK_OPTIONS}
             number={issueNumber}
-            labels={["gitalk-react-dev"]}
             createIssueManually
+            onCreateIssue={(issue) => {
+              setIssues((prev) => [issue, ...(prev ?? [])]);
+              setIssueNumber(issue.number);
+            }}
           />
         )}
       </div>

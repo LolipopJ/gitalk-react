@@ -6,9 +6,19 @@ enum LogLevel {
   NO_LOG = Infinity,
 }
 
-class Logger {
+export class Logger {
   prefix = "Gitalk";
   logLevel = import.meta.env.PROD ? LogLevel.WARNING : LogLevel.INFO;
+
+  constructor({ prefix, logLevel }: { prefix?: string; logLevel?: LogLevel }) {
+    if (prefix) {
+      this.prefix = prefix;
+    }
+    if (logLevel !== undefined) {
+      this.logLevel = logLevel;
+    }
+    return this;
+  }
 
   i(...infos: unknown[]) {
     if (this.logLevel > LogLevel.INFO) return;
@@ -51,6 +61,6 @@ class Logger {
   }
 }
 
-const logger = new Logger();
+const logger = new Logger({});
 
 export default logger;
