@@ -23,6 +23,7 @@ import {
   ACCESS_TOKEN_KEY,
   DATE_FNS_LOCALE_MAP,
   DEFAULT_LABELS,
+  DEFAULT_USER,
   HOMEPAGE,
   VERSION,
 } from "./constants";
@@ -183,6 +184,12 @@ export interface GitalkProps
    */
   updateCountCallback?: (count: number) => void;
   /**
+   * Callback method invoked when a new issue is successfully created.
+   *
+   * @param issue created issue
+   */
+  onCreateIssue?: (issue: IssueType) => void;
+  /**
    * Callback method invoked when a new comment is successfully created.
    *
    * @param comment created comment
@@ -201,7 +208,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     admin,
     id: propsIssueId = location.host + location.pathname,
     number: propsIssueNumber,
-    labels: issueBaseLabels = DEFAULT_LABELS,
+    labels: propsIssueLabels = DEFAULT_LABELS,
     title: issueTitle = document.title,
     body: issueBody = location.href +
       "\n\n" +
@@ -224,30 +231,23 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     defaultUser: propsDefaultUser,
     defaultAuthor: propsDefaultAuthor,
     updateCountCallback,
+    onCreateIssue,
     onCreateComment,
     className = "",
     ...restProps
   } = props;
-  const issueId = propsIssueId.slice(0, 50);
-  const issueNumber =
-    propsIssueNumber && propsIssueNumber > 0 ? propsIssueNumber : undefined;
-  const commentsPerPage =
-    propsPerPage > 100 ? 100 : propsPerPage < 0 ? 10 : propsPerPage;
-  const defaultUser = propsDefaultUser
-    ? propsDefaultUser
-    : propsDefaultAuthor
-      ? {
-          avatar_url: propsDefaultAuthor.avatarUrl,
-          login: propsDefaultAuthor.login,
-          html_url: propsDefaultAuthor.url,
-        }
-      : {
-          avatar_url: "//avatars1.githubusercontent.com/u/29697133?s=50",
-          login: "null",
-          html_url: "",
-        };
 
-  logger.i("re-rendered.");
+  const [issue, setIssue] = useState<IssueType>();
+  const issueNumber = useMemo(
+    () =>
+      propsIssueNumber && propsIssueNumber > 0 ? propsIssueNumber : undefined,
+    [propsIssueNumber],
+  );
+  const issueId = useMemo(() => propsIssueId.slice(0, 50), [propsIssueId]);
+  const issueLabels = useMemo(
+    () => propsIssueLabels.concat([issueId]),
+    [propsIssueLabels, issueId],
+  );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputComment, setInputComment] = useState<string>("");
@@ -257,9 +257,26 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   const [commentsCount, setCommentsCount] = useState<number>(0);
   const [commentsCursor, setCommentsCursor] = useState("");
   const [commentsPage, setCommentsPage] = useState<number>(1);
+  const commentsPerPage = useMemo(
+    () => (propsPerPage > 100 ? 100 : propsPerPage < 0 ? 10 : propsPerPage),
+    [propsPerPage],
+  );
   const [commentsLoaded, setCommentsLoaded] = useState<boolean>(false);
   const [commentsPagerDirection, setCommentsPagerDirection] =
     useState(pagerDirection);
+  const defaultUser = useMemo(
+    () =>
+      propsDefaultUser
+        ? propsDefaultUser
+        : propsDefaultAuthor
+          ? {
+              avatar_url: propsDefaultAuthor.avatarUrl,
+              login: propsDefaultAuthor.login,
+              html_url: propsDefaultAuthor.url,
+            }
+          : DEFAULT_USER,
+    [propsDefaultAuthor, propsDefaultUser],
+  );
 
   const [showPopup, setShowPopup] = useState<boolean>(false);
 
@@ -337,12 +354,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     );
   }, [admin, user]);
 
-  const issueLabels = useMemo(
-    () => issueBaseLabels.concat([issueId]),
-    [issueBaseLabels, issueId],
-  );
-
-  const { loading: createIssueLoading, runAsync: runCreateIssue } = useRequest(
+  const { loading: createIssueLoading, run: runCreateIssue } = useRequest(
     async () => {
       logger.i(`Creating issue...`);
 
@@ -360,11 +372,13 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       if (createIssueRes.status === 201) {
         const _issue = createIssueRes.data;
         logger.s(`Create issue successfully:`, _issue);
-        return _issue;
+
+        onCreateIssue?.(_issue);
+
+        setIssue(_issue);
       } else {
         setAlert(`Create issue failed: ${createIssueRes}`);
         logger.e(`Create issue failed:`, createIssueRes);
-        return undefined;
       }
     },
     {
@@ -374,11 +388,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     },
   );
 
-  const {
-    data: issue,
-    mutate: setIssue,
-    loading: getIssueLoading,
-  } = useRequest(
+  const { loading: getIssueLoading } = useRequest(
     async () => {
       if (issueNumber) {
         const getIssueRes = await octokit.request(
@@ -396,15 +406,14 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             `Locate issue ${issueNumber} in repository ${owner}/${repo} successfully:`,
             _issue,
           );
-          return _issue;
+          setIssue(_issue);
         } else if (getIssueRes.status === 404) {
           logger.w(
             `Issue ${issueNumber} in repository ${owner}/${repo} was not found.`,
           );
 
           if (isAdmin && !createIssueManually) {
-            const _issue = await runCreateIssue();
-            return _issue;
+            runCreateIssue();
           }
         } else {
           setAlert(
@@ -434,15 +443,14 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
               `Locate issue with labels ${issueLabels} in repository ${owner}/${repo} successfully:`,
               _issue,
             );
-            return _issue;
+            setIssue(_issue);
           } else {
             logger.w(
               `Issue with labels ${issueLabels} in repository ${owner}/${repo} was not found.`,
             );
 
             if (isAdmin && !createIssueManually) {
-              const _issue = await runCreateIssue();
-              return _issue;
+              runCreateIssue();
             }
           }
         } else if (getIssuesStatus === 404) {
@@ -451,8 +459,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           );
 
           if (isAdmin && !createIssueManually) {
-            const _issue = await runCreateIssue();
-            return _issue;
+            runCreateIssue();
           }
         } else {
           setAlert(
@@ -464,8 +471,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           );
         }
       }
-
-      return undefined;
     },
     {
       ready: !!owner && !!repo && (!!issueNumber || !!issueId),
