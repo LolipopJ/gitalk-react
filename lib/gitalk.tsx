@@ -363,7 +363,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     },
   );
 
-  const { data: issue, loading: getIssueLoading } = useRequest(
+  const {
+    data: issue,
+    mutate: setIssue,
+    loading: getIssueLoading,
+  } = useRequest(
     async () => {
       if (issueNumber) {
         const getIssueRes = await octokit.request(
@@ -455,6 +459,10 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     {
       ready: !!owner && !!repo && (!!issueNumber || !!issueId),
       refreshDeps: [owner, repo, issueNumber, issueId],
+      onBefore: () => {
+        setIssue(undefined);
+        setInputComment("");
+      },
     },
   );
 
@@ -668,8 +676,10 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   const {
     data: commentHtml = "",
+    mutate: setCommentHtml,
     loading: getCommentHtmlLoading,
     run: runGetCommentHtml,
+    cancel: cancelGetCommentHtml,
   } = useRequest(
     async () => {
       const getPreviewedHtmlRes = await octokit.request("POST /markdown", {
@@ -685,7 +695,12 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         return "";
       }
     },
-    { manual: true },
+    {
+      manual: true,
+      onBefore: () => {
+        setCommentHtml("");
+      },
+    },
   );
 
   const { loading: likeOrDislikeCommentLoading, run: runLikeOrDislikeComment } =
@@ -868,6 +883,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   > = () => {
     if (isPreviewComment) {
       setIsPreviewComment(false);
+      cancelGetCommentHtml();
     } else {
       setIsPreviewComment(true);
       runGetCommentHtml();
@@ -998,7 +1014,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             className="gt-header-preview markdown-body"
             style={{ display: isPreviewComment ? undefined : "none" }}
             dangerouslySetInnerHTML={{
-              __html: getCommentHtmlLoading ? "" : commentHtml,
+              __html: commentHtml,
             }}
           />
           <div className="gt-header-controls">
@@ -1029,6 +1045,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
               text={
                 isPreviewComment ? polyglot.t("edit") : polyglot.t("preview")
               }
+              isLoading={getCommentHtmlLoading}
+              disabled={false}
             />
             {!user && (
               <Button

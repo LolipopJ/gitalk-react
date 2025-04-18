@@ -10,7 +10,11 @@ import type { Comment as CommentType } from "../interfaces";
 import Avatar from "./avatar";
 import Svg from "./svg";
 
-export interface CommentProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface CommentProps
+  extends React.DetailedHTMLProps<
+    React.HTMLAttributes<HTMLDivElement>,
+    HTMLDivElement
+  > {
   comment: CommentType;
   isAuthor: boolean;
   isAdmin: boolean;

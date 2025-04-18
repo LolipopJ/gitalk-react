@@ -1,6 +1,10 @@
 import React from "react";
 
-export interface ActionProps extends React.HTMLAttributes<HTMLAnchorElement> {
+export interface ActionProps
+  extends React.DetailedHTMLProps<
+    React.AnchorHTMLAttributes<HTMLAnchorElement>,
+    HTMLAnchorElement
+  > {
   text: string;
 }
 
