@@ -86,7 +86,7 @@ When using the Gitalk component, fill in the necessary configuration items:
 
 **Required**. A list of Gitalk administrators. This can include users who have write access to this repository: owners and collaborators.
 
-### id `string = location.href`
+### id `string = location.pathname`
 
 A unique identifier for the comment topic; length cannot exceed 50 characters.
 

@@ -86,7 +86,7 @@ Gitalk 依赖于 Github OAuth App 实现登录鉴权，您需要首先[注册一
 
 **必填项**。Gitalk 管理员列表。可以是 Github 仓库的拥有者和协作者：拥有对此仓库**写权限**的用户。
 
-### id `string = location.href`
+### id `string = location.pathname`
 
 评论议题的唯一标识符，长度不能超过 50。
 
