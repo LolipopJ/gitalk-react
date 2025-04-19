@@ -568,7 +568,6 @@ $gt-breakpoint-mobile: 479px;
 
   &::after {
     position: fixed;
-    inset: 0 0 100%;
     content: '';
     opacity: 0;
   }
@@ -577,12 +576,11 @@ $gt-breakpoint-mobile: 479px;
     position: relative;
 
     &::after {
+      inset: 0;
       z-index: $gt-mask-z-index;
-      background: #000;
-      opacity: 0.6;
-      transition:
-        opacity 0.3s,
-        bottom 0s;
+      background: #171717;
+      opacity: 0.8;
+      transition: opacity ease 0.3s;
     }
 
     .gt-header-comment {

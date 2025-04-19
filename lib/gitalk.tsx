@@ -1220,7 +1220,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       value={{ language, polyglot, dateFnsLocaleMap: DATE_FNS_LOCALE_MAP }}
     >
       <div
-        className={`gt-container ${isInputFocused ? "gt-input-focused" : ""} ${className}`}
+        className={`gt-container${isInputFocused ? " gt-input-focused" : ""} ${className}`}
         {...restProps}
       >
         {alert && <div className="gt-error">{alert}</div>}
