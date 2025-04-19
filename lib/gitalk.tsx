@@ -46,7 +46,13 @@ import logger from "./utils/logger";
 import { parseSearchQuery, stringifySearchQuery } from "./utils/query";
 
 export interface GitalkProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "id" | "title"> {
+  extends Omit<
+    React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLDivElement>,
+      HTMLDivElement
+    >,
+    "id" | "title"
+  > {
   /**
    * GitHub Application Client ID.
    */
@@ -113,7 +119,7 @@ export interface GitalkProps
   perPage?: number;
   /**
    * Comment sorting direction.
-   * Available values are last and first.
+   * Available values are `last` and `first`.
    *
    * @default "last"
    */
