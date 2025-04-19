@@ -26,5 +26,5 @@
     "noUnusedLocals": false,
     "noUnusedParameters": true
   },
-  "include": ["dev", "lib"]
+  "include": ["lib"]
 }

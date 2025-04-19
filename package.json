@@ -33,14 +33,15 @@
   },
   "types": "./dist/gitalk.d.ts",
   "scripts": {
-    "dev": "vite",
-    "build": "npm run build:ts && npm run build:scss",
+    "dev": "vite --config vite.config.preview.ts",
+    "build": "npm run build:lib && npm run build:preview",
+    "build:lib": "npm run build:ts && npm run build:scss",
     "build:ts": "tsc -b && vite build",
     "build:scss": "vite build --config vite.config.scss.ts",
+    "build:preview": "vite build --config vite.config.preview.ts",
     "lint": "npm run lint:ts && npm run lint:scss",
     "lint:ts": "eslint . --fix",
-    "lint:scss": "stylelint **/*.scss --fix",
-    "preview": "vite preview"
+    "lint:scss": "stylelint **/*.scss --fix"
   },
   "dependencies": {
     "ahooks": "^3.0.0",

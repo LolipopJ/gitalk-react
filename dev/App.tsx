@@ -197,6 +197,7 @@ const App = () => {
       >
         {THEME_LIST.map(({ label: themeLabel, key: themeKey }) => (
           <button
+            key={themeKey}
             className={theme === themeKey ? "active" : ""}
             onClick={() => switchTheme(themeKey)}
           >

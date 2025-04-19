@@ -28,7 +28,7 @@ export default defineConfig({
   plugins: [
     react(),
     dts({
-      tsconfigPath: "tsconfig.app.json",
+      tsconfigPath: "tsconfig.lib.json",
       rollupTypes: true,
     }),
     visualizer({
