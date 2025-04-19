@@ -1,3 +1,5 @@
+import "./app.scss";
+
 import { useRequest } from "ahooks";
 import { useEffect, useMemo, useState } from "react";
 
@@ -8,10 +10,14 @@ import getOctokitInstance from "../lib/services/request";
 import { Logger } from "../lib/utils/logger";
 
 type Theme = "light" | "dark";
+const THEME_LIST: { label: string; key: Theme }[] = [
+  { label: "LIGHT", key: "light" },
+  { label: "DARK", key: "dark" },
+];
 
 const logger = new Logger({ prefix: "Gitalk Dev Page" });
 
-const GITALK_OPTIONS: GitalkProps = import.meta.env.PROD
+const GITALK_BASE_OPTIONS: GitalkProps = import.meta.env.PROD
   ? {
       clientID: "Ov23lizwQOGBomnxr5j1",
       clientSecret: "c6c3a16df89ef55264fb34821c4e76fe4f75c77e",
@@ -31,7 +37,10 @@ const GITALK_OPTIONS: GitalkProps = import.meta.env.PROD
         : ["LolipopJ"],
     };
 
-const ISSUES_PER_PAGE = 30;
+const GITALK_CUSTOM_OPTIONS_KEY = "GITALK_CUSTOM_OPTIONS";
+const storedGitalkCustomOptions = localStorage.getItem(
+  GITALK_CUSTOM_OPTIONS_KEY,
+);
 
 const App = () => {
   const [issuesPage, setIssuesPage] = useState<number>(1);
@@ -40,12 +49,37 @@ const App = () => {
   const [theme, setTheme] = useState<Theme>("light");
   const [issueNumber, setIssueNumber] = useState<number>();
 
+  const [options, setOptions] = useState<
+    Omit<
+      GitalkProps,
+      "clientID" | "clientSecret" | "owner" | "repo" | "admin" | "number"
+    >
+  >(
+    storedGitalkCustomOptions
+      ? JSON.parse(storedGitalkCustomOptions)
+      : {
+          createIssueManually: true,
+          onCreateIssue: (issue) => {
+            setIssues((prev) => [issue, ...(prev ?? [])]);
+            setIssueNumber(issue.number);
+          },
+        },
+  );
+
+  useEffect(() => {
+    logger.i(
+      "Gitalk React options:",
+      Object.assign({}, options, GITALK_BASE_OPTIONS),
+    );
+    localStorage.setItem(GITALK_CUSTOM_OPTIONS_KEY, JSON.stringify(options));
+  }, [options]);
+
   useEffect(() => {
     const url = new URL(location.href);
     const searchParams = url.searchParams;
 
-    const theme = searchParams.get("theme") || "light";
-    if (theme === "dark") {
+    const _theme = searchParams.get("theme") || "light";
+    if (_theme === "dark") {
       import("../lib/themes/gitalk-dark.scss");
       setTheme("dark");
     } else {
@@ -67,17 +101,19 @@ const App = () => {
     loading: getIssuesLoading,
   } = useRequest(
     async (): Promise<Issue[]> => {
-      const from = (issuesPage - 1) * ISSUES_PER_PAGE + 1;
-      const to = issuesPage * ISSUES_PER_PAGE;
+      const issuesPerPage = 30;
+
+      const from = (issuesPage - 1) * issuesPerPage + 1;
+      const to = issuesPage * issuesPerPage;
 
       const getIssuesRes = await octokit.request(
         "GET /repos/{owner}/{repo}/issues",
         {
-          owner: GITALK_OPTIONS.owner,
-          repo: GITALK_OPTIONS.repo,
+          owner: GITALK_BASE_OPTIONS.owner,
+          repo: GITALK_BASE_OPTIONS.repo,
           labels: "Gitalk",
           page: issuesPage,
-          per_page: ISSUES_PER_PAGE,
+          per_page: issuesPerPage,
         },
       );
 
@@ -85,7 +121,7 @@ const App = () => {
         const _issues = getIssuesRes.data;
         logger.s(`Get issues from ${from} to ${to} successfully:`, _issues);
 
-        if (_issues.length < ISSUES_PER_PAGE) {
+        if (_issues.length < issuesPerPage) {
           setIssuesLoaded(true);
         }
 
@@ -114,40 +150,160 @@ const App = () => {
     logger.i("Current active issue:", selectedIssue);
   }, [selectedIssue]);
 
+  const switchTheme = (newTheme: Theme) => {
+    const url = new URL(location.href);
+    const searchParams = url.searchParams;
+    searchParams.set("theme", newTheme);
+    location.href = url.toString();
+  };
+
   return (
-    <div style={{ padding: 16 }}>
+    <div
+      style={{
+        padding: "56px 32px",
+        margin: "0 auto",
+        minWidth: 320,
+        maxWidth: 768,
+      }}
+    >
+      <h1 style={{ textAlign: "center" }}>Gitalk React</h1>
+      <div style={{ textAlign: "center", padding: 12 }}>
+        <a
+          href="https://www.npmjs.com/package/gitalk-react?activeTab=readme#quick-start"
+          target="_blank"
+        >
+          <button
+            className="primary large"
+            style={{
+              marginRight: 12,
+            }}
+          >
+            USAGE
+          </button>
+        </a>
+        <a href="https://github.com/LolipopJ/gitalk-react" target="_blank">
+          <button className="outlined large">GITHUB</button>
+        </a>
+      </div>
+
+      <h2>Themes</h2>
       <div
         style={{
           display: "flex",
-          alignItems: "center",
           flexWrap: "wrap",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        {THEME_LIST.map(({ label: themeLabel, key: themeKey }) => (
+          <button
+            className={theme === themeKey ? "active" : ""}
+            onClick={() => switchTheme(themeKey)}
+          >
+            {themeLabel}
+          </button>
+        ))}
+      </div>
+
+      <h2>Options</h2>
+      <form
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <div>
+          <label htmlFor="pagerDirection">Pager Direction:</label>
+          <select
+            name="pagerDirection"
+            defaultValue={options.pagerDirection ?? "last"}
+            onChange={(e) => {
+              e.persist();
+              setOptions((prev) => ({
+                ...prev,
+                pagerDirection: e.target.value as GitalkProps["pagerDirection"],
+              }));
+            }}
+          >
+            <option value="last">last</option>
+            <option value="first">first</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="createIssueManually">Create Issue Manually:</label>
+          <input
+            type="checkbox"
+            name="createIssueManually"
+            defaultChecked={options.createIssueManually ?? true}
+            onChange={(e) => {
+              e.persist();
+              setOptions((prev) => ({
+                ...prev,
+                createIssueManually: e.target.checked,
+              }));
+            }}
+          />
+        </div>
+        <div>
+          <label htmlFor="enableHotKey">Enable Hot Key:</label>
+          <input
+            type="checkbox"
+            name="enableHotKey"
+            defaultChecked={options.enableHotKey ?? true}
+            onChange={(e) => {
+              e.persist();
+              setOptions((prev) => ({
+                ...prev,
+                enableHotKey: e.target.checked,
+              }));
+            }}
+          />
+        </div>
+        <div>
+          <label htmlFor="distractionFreeMode">Distraction Free Mode:</label>
+          <input
+            type="checkbox"
+            name="distractionFreeMode"
+            defaultChecked={options.distractionFreeMode ?? false}
+            onChange={(e) => {
+              e.persist();
+              setOptions((prev) => ({
+                ...prev,
+                distractionFreeMode: Boolean(e.target.checked),
+              }));
+            }}
+          />
+        </div>
+      </form>
+
+      <h2>Chats</h2>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
           gap: 12,
         }}
       >
         <span>
-          Existed issues in repository {GITALK_OPTIONS.owner}/
-          {GITALK_OPTIONS.repo}:
+          Existed issues in repository {GITALK_BASE_OPTIONS.owner}/
+          {GITALK_BASE_OPTIONS.repo}:
         </span>
         {issues.length
           ? issues.map((issue) => {
               const { number, title, html_url } = issue;
 
               return (
-                <a
+                <button
+                  className={number === issueNumber ? "active" : ""}
                   key={number}
                   title={html_url}
                   onClick={() => setIssueNumber(number)}
-                  style={{
-                    padding: "6px 12px",
-                    border: "1px solid #333",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    backgroundColor:
-                      number === issueNumber ? "#efefef" : undefined,
-                  }}
                 >
                   {title}
-                </a>
+                </button>
               );
             })
           : getIssuesLoading
@@ -156,7 +312,6 @@ const App = () => {
         <button
           onClick={() => setIssuesPage((prev) => prev + 1)}
           disabled={getIssuesLoading || issuesLoaded}
-          style={{ padding: "6px 12px" }}
         >
           {issuesLoaded
             ? "Issues loaded"
@@ -165,23 +320,21 @@ const App = () => {
               : "Load more issues"}
         </button>
       </div>
+
+      <h2>Preview</h2>
       <div
         style={{
           marginTop: 16,
-          padding: 32,
+          minHeight: "600px",
+          padding: "24px 32px",
+          borderRadius: 8,
           background: theme === "light" ? "#fff" : "#171717",
+          boxShadow:
+            theme === "light" ? "0 4px 12px 0 #ccc" : "0 4px 12px 0 #333",
         }}
       >
         {!!issueNumber && (
-          <Gitalk
-            {...GITALK_OPTIONS}
-            number={issueNumber}
-            createIssueManually
-            onCreateIssue={(issue) => {
-              setIssues((prev) => [issue, ...(prev ?? [])]);
-              setIssueNumber(issue.number);
-            }}
-          />
+          <Gitalk {...options} {...GITALK_BASE_OPTIONS} number={issueNumber} />
         )}
       </div>
     </div>

@@ -39,7 +39,7 @@
     "build:scss": "vite build --config vite.config.scss.ts",
     "lint": "npm run lint:ts && npm run lint:scss",
     "lint:ts": "eslint . --fix",
-    "lint:scss": "stylelint lib/**/*.scss --fix",
+    "lint:scss": "stylelint **/*.scss --fix",
     "preview": "vite preview"
   },
   "dependencies": {
