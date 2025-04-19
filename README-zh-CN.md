@@ -24,7 +24,7 @@
 - [ ] Feature: 支持在 Gitalk React 编辑自己发表的评论。
 - [ ] refactor: 逐渐移除对非必要三方库的依赖。减少构建包的体积。
 - [ ] test: 添加自动化测试流程。提升项目的健壮性。
-- [ ] chore: 部署预览环境。
+- [x] chore: 部署[预览环境](https://lolipopj.github.io/gitalk-react/)。
 
 ## 快速开始
 

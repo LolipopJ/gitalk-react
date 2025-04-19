@@ -24,7 +24,7 @@ Developed for modern browsers, focusing on reducing build size and enhancing dev
 - [ ] Feature: Support editing comments published by the user in Gitalk React.
 - [ ] refactor: Gradually remove dependencies on non-essential third-party libraries to reduce build size.
 - [ ] test: Add automated testing processes to enhance project robustness.
-- [ ] chore: Deploy preview environment.
+- [x] chore: Deploy [preview environment](https://lolipopj.github.io/gitalk-react/).
 
 ## Quick Start
 
