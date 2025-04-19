@@ -243,8 +243,8 @@ When importing dark theme with `import 'gitalk-react/gitalk-dark.css'`, the defa
 Create a `.env.local` file in your project's root directory and add development environment variables as follows:
 
 ```bash
-VITE_CLIENT_ID="YOUR_GITHUB_APP_CLIENT_ID"
-VITE_CLIENT_SECRET="YOUR_GITHUB_APP_CLIENT_SECRET"
+VITE_CLIENT_ID="YOUR_GITHUB_OAUTH_APP_CLIENT_ID"
+VITE_CLIENT_SECRET="YOUR_GITHUB_OAUTH_APP_CLIENT_SECRET"
 VITE_REPO_OWNER="YOUR_GITHUB_USERNAME"
 VITE_REPO_NAME="YOUR_REPO_NAME"
 VITE_ADMIN='["YOUR_GITHUB_USERNAME"]'

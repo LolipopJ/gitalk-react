@@ -26,7 +26,9 @@
       "require": "./dist/gitalk.umd.cjs"
     },
     "./gitalk.css": "./dist/gitalk-light.css",
+    "./light.css": "./dist/gitalk-light.css",
     "./gitalk-light.css": "./dist/gitalk-light.css",
+    "./dark.css": "./dist/gitalk-dark.css",
     "./gitalk-dark.css": "./dist/gitalk-dark.css"
   },
   "types": "./dist/gitalk.d.ts",
