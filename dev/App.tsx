@@ -199,7 +199,6 @@ const App = () => {
       style={{
         padding: "56px 32px",
         margin: "0 auto",
-        minWidth: 320,
         maxWidth: 768,
       }}
     >
@@ -444,7 +443,7 @@ const App = () => {
 
       <div
         style={{
-          marginTop: 16,
+          margin: "16px -24px 0",
           minHeight: "600px",
           padding: "24px 32px",
           borderRadius: 8,
