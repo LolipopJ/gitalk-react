@@ -651,6 +651,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         logger.s(`Create issue comment successfully.`);
 
         setInputComment("");
+        setIsPreviewComment(false);
         setCommentsCount((prev) => prev + 1);
 
         onCreateComment?.(createdIssueComment);
