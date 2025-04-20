@@ -18,6 +18,12 @@ const THEME_LIST: { label: string; key: Theme }[] = [
   { label: "DARK", key: "dark" },
 ];
 
+const DEFAULT_CSS = `.gt-container {
+  --gt-color-main: #059669;
+  --gt-color-main-lighter: #10b981;
+}`;
+const GITALK_CUSTOM_CSS_KEY = "GITALK_CUSTOM_CSS";
+
 const GITALK_BASE_OPTIONS: GitalkProps = import.meta.env.PROD
   ? {
       clientID: "Ov23lizwQOGBomnxr5j1",
@@ -48,9 +54,12 @@ const I18N_LANGS = Object.keys(i18nMap) as Lang[];
 const App = () => {
   const [issuesPage, setIssuesPage] = useState<number>(1);
   const [issuesLoaded, setIssuesLoaded] = useState<boolean>(false);
+  const [issueNumber, setIssueNumber] = useState<number>();
 
   const [theme, setTheme] = useState<Theme>("light");
-  const [issueNumber, setIssueNumber] = useState<number>();
+  const [css, setCSS] = useState<string>(
+    localStorage.getItem(GITALK_CUSTOM_CSS_KEY) ?? DEFAULT_CSS,
+  );
 
   const [options, setOptions] = useState<
     Omit<
@@ -168,6 +177,23 @@ const App = () => {
     location.href = url.toString();
   };
 
+  const onResetCSS = () => {
+    document.getElementById(GITALK_CUSTOM_CSS_KEY)?.remove();
+
+    setCSS(DEFAULT_CSS);
+  };
+
+  const onSetCSS = (cssString: string) => {
+    document.getElementById(GITALK_CUSTOM_CSS_KEY)?.remove();
+
+    const style = document.createElement("style");
+    style.id = GITALK_CUSTOM_CSS_KEY;
+    style.textContent = cssString;
+    document.head.appendChild(style);
+
+    localStorage.setItem(GITALK_CUSTOM_CSS_KEY, cssString);
+  };
+
   return (
     <div
       style={{
@@ -219,6 +245,32 @@ const App = () => {
                 {themeLabel}
               </button>
             ))}
+
+            <div style={{ width: "100%", marginTop: 12 }}>
+              <textarea
+                style={{
+                  width: "calc(100% - 16px)",
+                  minHeight: 100,
+                  resize: "vertical",
+                  padding: 8,
+                }}
+                placeholder="Custom your styles"
+                value={css}
+                onChange={(e) => setCSS(e.target.value)}
+              />
+              <div style={{ width: "100%", marginTop: 6, textAlign: "end" }}>
+                <button
+                  className="small"
+                  style={{ marginRight: 8 }}
+                  onClick={onResetCSS}
+                >
+                  Reset
+                </button>
+                <button className="primary small" onClick={() => onSetCSS(css)}>
+                  Confirm
+                </button>
+              </div>
+            </div>
           </div>
         </section>
 

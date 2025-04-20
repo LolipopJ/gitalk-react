@@ -48,6 +48,12 @@ body {
       box-shadow: 0 2px 4px 0 var(--secondary);
     }
 
+    &.small {
+      padding: 4px 8px;
+      font-size: 14px;
+      border-radius: 4px;
+    }
+
     &.large {
       padding: 12px 24px;
       font-size: 18px;
