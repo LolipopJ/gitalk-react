@@ -13,7 +13,7 @@ import RU from "./ru.json";
 import ZHCN from "./zh-CN.json";
 import ZHTW from "./zh-TW.json";
 
-const i18nMap = {
+export const i18nMap = {
   zh: ZHCN,
   "zh-CN": ZHCN,
   "zh-TW": ZHTW,

@@ -5,17 +5,18 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ACCESS_TOKEN_KEY } from "../lib/constants";
 import Gitalk, { type GitalkProps } from "../lib/gitalk";
+import { i18nMap, type Lang } from "../lib/i18n";
 import { Issue } from "../lib/interfaces";
 import getOctokitInstance from "../lib/services/request";
 import { Logger } from "../lib/utils/logger";
+
+const logger = new Logger({ prefix: "Gitalk Dev Page" });
 
 type Theme = "light" | "dark";
 const THEME_LIST: { label: string; key: Theme }[] = [
   { label: "LIGHT", key: "light" },
   { label: "DARK", key: "dark" },
 ];
-
-const logger = new Logger({ prefix: "Gitalk Dev Page" });
 
 const GITALK_BASE_OPTIONS: GitalkProps = import.meta.env.PROD
   ? {
@@ -41,6 +42,8 @@ const GITALK_CUSTOM_OPTIONS_KEY = "GITALK_CUSTOM_OPTIONS";
 const storedGitalkCustomOptions = localStorage.getItem(
   GITALK_CUSTOM_OPTIONS_KEY,
 );
+
+const I18N_LANGS = Object.keys(i18nMap) as Lang[];
 
 const App = () => {
   const [issuesPage, setIssuesPage] = useState<number>(1);
@@ -87,7 +90,8 @@ const App = () => {
       setTheme("light");
     }
 
-    const initialIssueNumber = Number(searchParams.get("number")) || undefined;
+    const initialIssueNumber =
+      Number(searchParams.get("issueNumber")) || undefined;
     setIssueNumber(initialIssueNumber);
   }, []);
 
@@ -147,7 +151,14 @@ const App = () => {
     [issueNumber, issues],
   );
   useEffect(() => {
-    logger.i("Current active issue:", selectedIssue);
+    if (selectedIssue) {
+      logger.i("Current active issue:", selectedIssue);
+
+      const url = new URL(location.href);
+      const searchParams = url.searchParams;
+      searchParams.set("issueNumber", String(selectedIssue.number));
+      history.replaceState(null, "", url);
+    }
   }, [selectedIssue]);
 
   const switchTheme = (newTheme: Theme) => {
@@ -216,7 +227,48 @@ const App = () => {
         }}
       >
         <div>
-          <label htmlFor="pagerDirection">Pager Direction:</label>
+          <label htmlFor="language">Language</label>
+          <select
+            name="language"
+            defaultValue={options.language ?? navigator.language}
+            onChange={(e) => {
+              e.persist();
+              setOptions((prev) => ({
+                ...prev,
+                language: e.target.value as GitalkProps["language"],
+              }));
+            }}
+          >
+            {I18N_LANGS.map((lang) => (
+              <option key={lang} value={lang}>
+                {lang}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="perPage">Comments per page</label>
+          <select
+            name="perPage"
+            defaultValue={options.perPage ?? 10}
+            onChange={(e) => {
+              e.persist();
+              setOptions((prev) => ({
+                ...prev,
+                perPage: Number(e.target.value),
+              }));
+            }}
+          >
+            <option value="1">1</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="pagerDirection">Pager direction</label>
           <select
             name="pagerDirection"
             defaultValue={options.pagerDirection ?? "last"}
@@ -226,6 +278,7 @@ const App = () => {
                 ...prev,
                 pagerDirection: e.target.value as GitalkProps["pagerDirection"],
               }));
+              setTimeout(() => location.reload());
             }}
           >
             <option value="last">last</option>
@@ -233,7 +286,7 @@ const App = () => {
           </select>
         </div>
         <div>
-          <label htmlFor="createIssueManually">Create Issue Manually:</label>
+          <label htmlFor="createIssueManually">Create issue manually</label>
           <input
             type="checkbox"
             name="createIssueManually"
@@ -248,7 +301,7 @@ const App = () => {
           />
         </div>
         <div>
-          <label htmlFor="enableHotKey">Enable Hot Key:</label>
+          <label htmlFor="enableHotKey">Enable hot key</label>
           <input
             type="checkbox"
             name="enableHotKey"
@@ -263,7 +316,7 @@ const App = () => {
           />
         </div>
         <div>
-          <label htmlFor="distractionFreeMode">Distraction Free Mode:</label>
+          <label htmlFor="distractionFreeMode">Distraction-free mode</label>
           <input
             type="checkbox"
             name="distractionFreeMode"
@@ -335,7 +388,12 @@ const App = () => {
         }}
       >
         {!!issueNumber && (
-          <Gitalk {...options} {...GITALK_BASE_OPTIONS} number={issueNumber} />
+          <Gitalk
+            {...options}
+            {...GITALK_BASE_OPTIONS}
+            className="gitalk"
+            number={issueNumber}
+          />
         )}
       </div>
     </div>
