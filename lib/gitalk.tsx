@@ -539,6 +539,12 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             _comments,
           );
 
+          const commentsPageInfo =
+            getIssueCommentsRes.repository.issue.comments.pageInfo;
+          const commentsPageCursor =
+            commentsPageInfo.startCursor || commentsPageInfo.endCursor || "";
+          setCommentsCursor(commentsPageCursor);
+
           if (pagerDirection === "last") return [..._comments, ...comments];
           else return [...comments, ..._comments];
         } else {
