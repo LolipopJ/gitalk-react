@@ -267,7 +267,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     () => (propsPerPage > 100 ? 100 : propsPerPage < 0 ? 10 : propsPerPage),
     [propsPerPage],
   );
-  const [commentsLoaded, setCommentsLoaded] = useState<boolean>(false);
   const [commentsPagerDirection, setCommentsPagerDirection] =
     useState(pagerDirection);
   const defaultUser = useMemo(
@@ -540,10 +539,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             _comments,
           );
 
-          if (_comments.length < commentsPerPage) {
-            setCommentsLoaded(true);
-          }
-
           if (pagerDirection === "last") return [..._comments, ...comments];
           else return [...comments, ..._comments];
         } else {
@@ -589,10 +584,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             _comments,
           );
 
-          if (_comments.length < commentsPerPage) {
-            setCommentsLoaded(true);
-          }
-
           return [...comments, ..._comments];
         } else {
           setAlert(
@@ -608,7 +599,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       return comments;
     },
     {
-      ready: !!owner && !!repo && !!issue && !getUserLoading && !commentsLoaded,
+      ready: !!owner && !!repo && !!issue && !getUserLoading,
       refreshDeps: [commentsPage, issue, user, pagerDirection],
     },
   );
@@ -669,7 +660,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     setCommentsCount(0);
     setCommentsCursor("");
     setCommentsPage(1);
-    setCommentsLoaded(false);
     setLocalComments([]);
 
     if (issue) {
@@ -678,7 +668,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   }, [issue, user, pagerDirection, setComments, setLocalComments]);
 
   /** sorted all comments */
-  const allComments = useMemo(() => {
+  const loadedComments = useMemo(() => {
     const _allComments = comments.concat(localComments);
 
     if (commentsPagerDirection === "last" && !!user) {
@@ -1127,7 +1117,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     return (
       <div className="gt-comments" key="comments">
         <FlipMove {...flipMoveOptions}>
-          {allComments.map((comment) => (
+          {loadedComments.map((comment) => (
             <CommentWithForwardedRef key={comment.id} comment={comment} />
           ))}
         </FlipMove>
@@ -1136,7 +1126,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             {polyglot.t("first-comment-person")}
           </p>
         )}
-        {!commentsLoaded && allCommentsCount ? (
+        {allCommentsCount > loadedComments.length ? (
           <div className="gt-comments-controls">
             <Button
               className="gt-btn-loadmore"
