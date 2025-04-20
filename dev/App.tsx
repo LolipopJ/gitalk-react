@@ -177,205 +177,219 @@ const App = () => {
         maxWidth: 768,
       }}
     >
-      <h1 style={{ textAlign: "center" }}>Gitalk React</h1>
-      <div style={{ textAlign: "center", padding: 12 }}>
-        <a
-          href="https://www.npmjs.com/package/gitalk-react?activeTab=readme#quick-start"
-          target="_blank"
-        >
-          <button
-            className="primary large"
+      <div className="sections">
+        <section className="section__header">
+          <h1 style={{ textAlign: "center" }}>Gitalk React</h1>
+          <div style={{ textAlign: "center", padding: 12 }}>
+            <a
+              href="https://www.npmjs.com/package/gitalk-react?activeTab=readme#quick-start"
+              target="_blank"
+            >
+              <button
+                className="primary large"
+                style={{
+                  marginRight: 12,
+                }}
+              >
+                USAGE
+              </button>
+            </a>
+            <a href="https://github.com/LolipopJ/gitalk-react" target="_blank">
+              <button className="outlined large">GITHUB</button>
+            </a>
+          </div>
+        </section>
+
+        <section className="section__themes">
+          <h2>Themes</h2>
+          <div
             style={{
-              marginRight: 12,
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 12,
             }}
           >
-            USAGE
-          </button>
-        </a>
-        <a href="https://github.com/LolipopJ/gitalk-react" target="_blank">
-          <button className="outlined large">GITHUB</button>
-        </a>
-      </div>
-
-      <h2>Themes</h2>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        {THEME_LIST.map(({ label: themeLabel, key: themeKey }) => (
-          <button
-            key={themeKey}
-            className={theme === themeKey ? "active" : ""}
-            onClick={() => switchTheme(themeKey)}
-          >
-            {themeLabel}
-          </button>
-        ))}
-      </div>
-
-      <h2>Options</h2>
-      <form
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <div>
-          <label htmlFor="language">Language</label>
-          <select
-            name="language"
-            defaultValue={options.language ?? navigator.language}
-            onChange={(e) => {
-              e.persist();
-              setOptions((prev) => ({
-                ...prev,
-                language: e.target.value as GitalkProps["language"],
-              }));
-            }}
-          >
-            {I18N_LANGS.map((lang) => (
-              <option key={lang} value={lang}>
-                {lang}
-              </option>
+            {THEME_LIST.map(({ label: themeLabel, key: themeKey }) => (
+              <button
+                key={themeKey}
+                className={theme === themeKey ? "active" : ""}
+                onClick={() => switchTheme(themeKey)}
+              >
+                {themeLabel}
+              </button>
             ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="perPage">Comments per page</label>
-          <select
-            name="perPage"
-            defaultValue={options.perPage ?? 10}
-            onChange={(e) => {
-              e.persist();
-              setOptions((prev) => ({
-                ...prev,
-                perPage: Number(e.target.value),
-              }));
+          </div>
+        </section>
+
+        <section className="section__options">
+          <h2>Options</h2>
+          <form
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 12,
             }}
           >
-            <option value="1">1</option>
-            <option value="5">5</option>
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="pagerDirection">Pager direction</label>
-          <select
-            name="pagerDirection"
-            defaultValue={options.pagerDirection ?? "last"}
-            onChange={(e) => {
-              e.persist();
-              setOptions((prev) => ({
-                ...prev,
-                pagerDirection: e.target.value as GitalkProps["pagerDirection"],
-              }));
-              setTimeout(() => location.reload());
+            <div>
+              <label htmlFor="language">Language</label>
+              <select
+                name="language"
+                defaultValue={options.language ?? navigator.language}
+                onChange={(e) => {
+                  e.persist();
+                  setOptions((prev) => ({
+                    ...prev,
+                    language: e.target.value as GitalkProps["language"],
+                  }));
+                }}
+              >
+                {I18N_LANGS.map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="perPage">Comments per page</label>
+              <select
+                name="perPage"
+                defaultValue={options.perPage ?? 10}
+                onChange={(e) => {
+                  e.persist();
+                  setOptions((prev) => ({
+                    ...prev,
+                    perPage: Number(e.target.value),
+                  }));
+                }}
+              >
+                <option value="1">1</option>
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="pagerDirection">Pager direction</label>
+              <select
+                name="pagerDirection"
+                defaultValue={options.pagerDirection ?? "last"}
+                onChange={(e) => {
+                  e.persist();
+                  setOptions((prev) => ({
+                    ...prev,
+                    pagerDirection: e.target
+                      .value as GitalkProps["pagerDirection"],
+                  }));
+                  setTimeout(() => location.reload());
+                }}
+              >
+                <option value="last">last</option>
+                <option value="first">first</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="createIssueManually">Create issue manually</label>
+              <input
+                type="checkbox"
+                name="createIssueManually"
+                defaultChecked={options.createIssueManually ?? true}
+                onChange={(e) => {
+                  e.persist();
+                  setOptions((prev) => ({
+                    ...prev,
+                    createIssueManually: e.target.checked,
+                  }));
+                }}
+              />
+            </div>
+            <div>
+              <label htmlFor="enableHotKey">Enable hot key</label>
+              <input
+                type="checkbox"
+                name="enableHotKey"
+                defaultChecked={options.enableHotKey ?? true}
+                onChange={(e) => {
+                  e.persist();
+                  setOptions((prev) => ({
+                    ...prev,
+                    enableHotKey: e.target.checked,
+                  }));
+                }}
+              />
+            </div>
+            <div>
+              <label htmlFor="distractionFreeMode">Distraction-free mode</label>
+              <input
+                type="checkbox"
+                name="distractionFreeMode"
+                defaultChecked={options.distractionFreeMode ?? false}
+                onChange={(e) => {
+                  e.persist();
+                  setOptions((prev) => ({
+                    ...prev,
+                    distractionFreeMode: Boolean(e.target.checked),
+                  }));
+                }}
+              />
+            </div>
+          </form>
+        </section>
+
+        <section className="section__chats">
+          <h2>Chats</h2>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 12,
             }}
           >
-            <option value="last">last</option>
-            <option value="first">first</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="createIssueManually">Create issue manually</label>
-          <input
-            type="checkbox"
-            name="createIssueManually"
-            defaultChecked={options.createIssueManually ?? true}
-            onChange={(e) => {
-              e.persist();
-              setOptions((prev) => ({
-                ...prev,
-                createIssueManually: e.target.checked,
-              }));
-            }}
-          />
-        </div>
-        <div>
-          <label htmlFor="enableHotKey">Enable hot key</label>
-          <input
-            type="checkbox"
-            name="enableHotKey"
-            defaultChecked={options.enableHotKey ?? true}
-            onChange={(e) => {
-              e.persist();
-              setOptions((prev) => ({
-                ...prev,
-                enableHotKey: e.target.checked,
-              }));
-            }}
-          />
-        </div>
-        <div>
-          <label htmlFor="distractionFreeMode">Distraction-free mode</label>
-          <input
-            type="checkbox"
-            name="distractionFreeMode"
-            defaultChecked={options.distractionFreeMode ?? false}
-            onChange={(e) => {
-              e.persist();
-              setOptions((prev) => ({
-                ...prev,
-                distractionFreeMode: Boolean(e.target.checked),
-              }));
-            }}
-          />
-        </div>
-      </form>
+            <span>
+              Existed issues in repository {GITALK_BASE_OPTIONS.owner}/
+              {GITALK_BASE_OPTIONS.repo}:
+            </span>
+            {issues.length
+              ? issues.map((issue) => {
+                  const { number, title, html_url } = issue;
 
-      <h2>Chats</h2>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <span>
-          Existed issues in repository {GITALK_BASE_OPTIONS.owner}/
-          {GITALK_BASE_OPTIONS.repo}:
-        </span>
-        {issues.length
-          ? issues.map((issue) => {
-              const { number, title, html_url } = issue;
+                  return (
+                    <button
+                      className={number === issueNumber ? "active" : ""}
+                      key={number}
+                      title={html_url}
+                      onClick={() => setIssueNumber(number)}
+                    >
+                      {title}
+                    </button>
+                  );
+                })
+              : getIssuesLoading
+                ? ""
+                : "NO ISSUE LOCATED"}
+            <button
+              onClick={() => setIssuesPage((prev) => prev + 1)}
+              disabled={getIssuesLoading || issuesLoaded}
+            >
+              {issuesLoaded
+                ? "Issues loaded"
+                : getIssuesLoading
+                  ? "Loading..."
+                  : "Load more issues"}
+            </button>
+          </div>
+        </section>
 
-              return (
-                <button
-                  className={number === issueNumber ? "active" : ""}
-                  key={number}
-                  title={html_url}
-                  onClick={() => setIssueNumber(number)}
-                >
-                  {title}
-                </button>
-              );
-            })
-          : getIssuesLoading
-            ? ""
-            : "NO ISSUE LOCATED"}
-        <button
-          onClick={() => setIssuesPage((prev) => prev + 1)}
-          disabled={getIssuesLoading || issuesLoaded}
-        >
-          {issuesLoaded
-            ? "Issues loaded"
-            : getIssuesLoading
-              ? "Loading..."
-              : "Load more issues"}
-        </button>
+        <section className="section__preview">
+          <h2>Preview</h2>
+        </section>
       </div>
 
-      <h2>Preview</h2>
       <div
         style={{
           marginTop: 16,
@@ -388,12 +402,7 @@ const App = () => {
         }}
       >
         {!!issueNumber && (
-          <Gitalk
-            {...options}
-            {...GITALK_BASE_OPTIONS}
-            className="gitalk"
-            number={issueNumber}
-          />
+          <Gitalk {...options} {...GITALK_BASE_OPTIONS} number={issueNumber} />
         )}
       </div>
     </div>

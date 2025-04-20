@@ -10,65 +10,70 @@ body {
   background-color: #fafafa;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  color: var(--primary);
-}
-
-form {
-  label {
-    margin-right: 8px;
-  }
-}
-
-button {
-  padding: 6px 12px;
-  cursor: pointer;
-  background-color: #fff;
-  border: 1px solid #333;
-  border-radius: 6px;
-  transition: background-color ease-out 0.3s;
-
-  &:hover {
-    background-color: #f6f6f6;
-  }
-
-  &.active {
+.sections {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     color: var(--primary);
-    background-color: #f6f6f6;
-    border-color: var(--primary);
-    box-shadow: 0 2px 4px 0 var(--secondary);
   }
 
-  &.large {
-    padding: 12px 24px;
-    font-size: 18px;
-    border-radius: 12px;
-  }
-
-  &[disabled] {
-    cursor: not-allowed;
-    background-color: #eaeaea;
-    border-color: #ccc;
-  }
-
-  &.primary {
-    color: #fff;
-    background-color: var(--primary);
-    border-color: var(--primary);
-
-    &:hover {
-      background-color: var(--secondary);
-      border-color: var(--secondary);
+  form {
+    label {
+      &::after {
+        content: ':';
+        margin-right: 8px;
+      }
     }
   }
 
-  &.outlined {
-    color: var(--primary);
-    border-color: var(--primary);
+  button {
+    padding: 6px 12px;
+    cursor: pointer;
+    background-color: #fff;
+    border: 1px solid #333;
+    border-radius: 6px;
+    transition: background-color ease-out 0.3s;
+
+    &:hover {
+      background-color: #f6f6f6;
+    }
+
+    &.active {
+      color: var(--primary);
+      background-color: #f6f6f6;
+      border-color: var(--primary);
+      box-shadow: 0 2px 4px 0 var(--secondary);
+    }
+
+    &.large {
+      padding: 12px 24px;
+      font-size: 18px;
+      border-radius: 12px;
+    }
+
+    &[disabled] {
+      cursor: not-allowed;
+      background-color: #eaeaea;
+      border-color: #ccc;
+    }
+
+    &.primary {
+      color: #fff;
+      background-color: var(--primary);
+      border-color: var(--primary);
+
+      &:hover {
+        background-color: var(--secondary);
+        border-color: var(--secondary);
+      }
+    }
+
+    &.outlined {
+      color: var(--primary);
+      border-color: var(--primary);
+    }
   }
 }
