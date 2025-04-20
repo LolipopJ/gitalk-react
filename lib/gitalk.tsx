@@ -267,6 +267,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     () => (propsPerPage > 100 ? 100 : propsPerPage < 0 ? 10 : propsPerPage),
     [propsPerPage],
   );
+  /** Current sort order, have effect when user is logged */
   const [commentsPagerDirection, setCommentsPagerDirection] =
     useState(pagerDirection);
   const defaultUser = useMemo(
@@ -489,6 +490,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   const {
     data: comments = [],
     mutate: setComments,
+    run: runGetComments,
     loading: getCommentsLoading,
   } = useRequest(
     async (): Promise<CommentType[]> => {
@@ -499,7 +501,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       if (user) {
         // Get comments via GraphQL, witch requires being logged and able to sort
         const query = getIssueCommentsQL({
-          pagerDirection,
+          pagerDirection: commentsPagerDirection,
         });
 
         const getIssueCommentsRes: IssueCommentsQLResponse =
@@ -545,7 +547,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             commentsPageInfo.startCursor || commentsPageInfo.endCursor || "";
           setCommentsCursor(commentsPageCursor);
 
-          if (pagerDirection === "last") return [..._comments, ...comments];
+          if (commentsPagerDirection === "last")
+            return [..._comments, ...comments];
           else return [...comments, ..._comments];
         } else {
           setAlert(
@@ -590,6 +593,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             _comments,
           );
 
+          setCommentsPage((prev) => prev + 1);
+
           return [...comments, ..._comments];
         } else {
           setAlert(
@@ -605,8 +610,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       return comments;
     },
     {
+      manual: true,
       ready: !!owner && !!repo && !!issue && !getUserLoading,
-      refreshDeps: [commentsPage, issue, user, pagerDirection],
     },
   );
 
@@ -646,6 +651,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         logger.s(`Create issue comment successfully.`);
 
         setInputComment("");
+        setCommentsCount((prev) => prev + 1);
+
         onCreateComment?.(createdIssueComment);
 
         return localComments.concat([createdIssueComment]);
@@ -663,33 +670,50 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   useEffect(() => {
     setComments([]);
-    setCommentsCount(0);
+    setCommentsCount(issue?.comments ?? 0);
     setCommentsCursor("");
     setCommentsPage(1);
     setLocalComments([]);
 
-    if (issue) {
-      setCommentsCount(issue.comments);
-    }
-  }, [issue, user, pagerDirection, setComments, setLocalComments]);
+    setTimeout(() => {
+      runGetComments();
+    });
+  }, [issue, runGetComments, setComments, setLocalComments]);
+
+  useEffect(() => {
+    setComments([]);
+    setCommentsCursor("");
+    setCommentsPage(1);
+
+    setTimeout(() => {
+      runGetComments();
+    });
+  }, [user, commentsPagerDirection, setComments, runGetComments]);
 
   /** sorted all comments */
   const loadedComments = useMemo(() => {
-    const _allComments = comments.concat(localComments);
+    const _loadedComments: CommentType[] = [];
 
-    if (commentsPagerDirection === "last" && !!user) {
-      // sort comments by date DESC
-      _allComments.reverse();
+    // filter duplicate comments if exist
+    const commentIdsSet = new Set();
+    for (const comment of comments.concat(localComments)) {
+      if (!commentIdsSet.has(comment.id)) {
+        commentIdsSet.add(comment.id);
+        _loadedComments.push(comment);
+      }
     }
 
-    return _allComments;
+    if (!!user && commentsPagerDirection === "last") {
+      // sort comments by date DESC
+      _loadedComments.reverse();
+    }
+
+    return _loadedComments;
   }, [comments, commentsPagerDirection, localComments, user]);
 
-  const allCommentsCount = commentsCount + (localComments ?? []).length;
-
   useEffect(() => {
-    updateCountCallback?.(allCommentsCount);
-  }, [allCommentsCount, updateCountCallback]);
+    updateCountCallback?.(commentsCount);
+  }, [commentsCount, updateCountCallback]);
 
   const {
     data: commentHtml = "",
@@ -1127,16 +1151,16 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             <CommentWithForwardedRef key={comment.id} comment={comment} />
           ))}
         </FlipMove>
-        {!allCommentsCount && (
+        {!commentsCount && (
           <p className="gt-comments-null">
             {polyglot.t("first-comment-person")}
           </p>
         )}
-        {allCommentsCount > loadedComments.length ? (
+        {commentsCount > loadedComments.length ? (
           <div className="gt-comments-controls">
             <Button
               className="gt-btn-loadmore"
-              onClick={() => setCommentsPage((prev) => prev + 1)}
+              onClick={runGetComments}
               isLoading={getCommentsLoading}
               text={polyglot.t("load-more")}
             />
@@ -1155,8 +1179,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           className="gt-counts"
           dangerouslySetInnerHTML={{
             __html: polyglot.t("counts", {
-              counts: `<a class="gt-link gt-link-counts" href="${issue?.html_url}" target="_blank" rel="noopener noreferrer">${allCommentsCount}</a>`,
-              smart_count: allCommentsCount,
+              counts: `<a class="gt-link gt-link-counts" href="${issue?.html_url}" target="_blank" rel="noopener noreferrer">${commentsCount}</a>`,
+              smart_count: commentsCount,
             }),
           }}
         />
