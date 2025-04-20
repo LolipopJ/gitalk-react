@@ -22,6 +22,7 @@
 ## 开发中的功能
 
 - [ ] Feature: 支持在 Gitalk React 编辑自己发表的评论。
+- [ ] Feature: 自动折叠过长的评论，允许点击展开该评论。
 - [ ] refactor: 逐渐移除对非必要三方库的依赖。减少构建包的体积。
 - [ ] test: 添加自动化测试流程。提升项目的健壮性。
 - [x] chore: 部署[预览环境](https://lolipopj.github.io/gitalk-react/)。

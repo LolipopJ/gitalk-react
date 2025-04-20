@@ -257,6 +257,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputComment, setInputComment] = useState<string>("");
+  const prevInputCommentRef = useRef<string>();
   const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
   const [isPreviewComment, setIsPreviewComment] = useState<boolean>(false);
 
@@ -718,17 +719,19 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   const {
     data: commentHtml = "",
-    mutate: setCommentHtml,
     loading: getCommentHtmlLoading,
     run: runGetCommentHtml,
-    cancel: cancelGetCommentHtml,
   } = useRequest(
-    async () => {
+    async (): Promise<string> => {
+      if (prevInputCommentRef.current === inputComment) return commentHtml;
+
       const getPreviewedHtmlRes = await octokit.request("POST /markdown", {
         text: inputComment,
       });
 
       if (getPreviewedHtmlRes.status === 200) {
+        prevInputCommentRef.current = inputComment;
+
         const _commentHtml = getPreviewedHtmlRes.data;
         return _commentHtml;
       } else {
@@ -739,9 +742,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     },
     {
       manual: true,
-      onBefore: () => {
-        setCommentHtml("");
-      },
     },
   );
 
@@ -925,7 +925,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   > = () => {
     if (isPreviewComment) {
       setIsPreviewComment(false);
-      cancelGetCommentHtml();
     } else {
       setIsPreviewComment(true);
       runGetCommentHtml();
@@ -1056,7 +1055,9 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             className="gt-header-preview markdown-body"
             style={{ display: isPreviewComment ? undefined : "none" }}
             dangerouslySetInnerHTML={{
-              __html: commentHtml,
+              __html: getCommentHtmlLoading
+                ? "<span>Loading preview...</span>"
+                : commentHtml,
             }}
           />
           <div className="gt-header-controls">
