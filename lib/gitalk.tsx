@@ -735,7 +735,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         if (prevComment) {
           repliedCommentBodyArray.unshift("", "");
         }
-        repliedCommentBodyArray.push("", "");
+        repliedCommentBodyArray.push("");
         const newComment = `${prevComment}${repliedCommentBodyArray.join("\n")}`;
         return newComment;
       });
@@ -797,6 +797,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
               {/* Comment textarea */}
               <CommentTextarea
+                ref={textareaRef}
                 value={inputComment}
                 onChange={(e) => setInputComment(e.target.value)}
                 onFocus={onCommentInputFocus}
