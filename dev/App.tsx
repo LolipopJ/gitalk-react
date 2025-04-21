@@ -4,9 +4,9 @@ import { useRequest } from "ahooks";
 import { useEffect, useMemo, useState } from "react";
 
 import { ACCESS_TOKEN_KEY } from "../lib/constants";
-import Gitalk, { type GitalkProps } from "../lib/gitalk";
+import Gitalk from "../lib/gitalk";
 import { i18nMap, type Lang } from "../lib/i18n";
-import { Issue } from "../lib/interfaces";
+import type { GitalkProps, Issue } from "../lib/interfaces";
 import getOctokitInstance from "../lib/services/request";
 import { Logger } from "../lib/utils/logger";
 
@@ -23,6 +23,13 @@ const DEFAULT_CSS = `.gt-container {
   --gt-color-main-lighter: #10b981;
 }`;
 const GITALK_CUSTOM_CSS_KEY = "GITALK_CUSTOM_CSS";
+
+const GITALK_CUSTOM_OPTIONS_KEY = "GITALK_CUSTOM_OPTIONS";
+const storedGitalkCustomOptions = localStorage.getItem(
+  GITALK_CUSTOM_OPTIONS_KEY,
+);
+
+const I18N_LANGS = Object.keys(i18nMap) as Lang[];
 
 const GITALK_BASE_OPTIONS: GitalkProps = import.meta.env.PROD
   ? {
@@ -44,12 +51,11 @@ const GITALK_BASE_OPTIONS: GitalkProps = import.meta.env.PROD
         : ["LolipopJ"],
     };
 
-const GITALK_CUSTOM_OPTIONS_KEY = "GITALK_CUSTOM_OPTIONS";
-const storedGitalkCustomOptions = localStorage.getItem(
-  GITALK_CUSTOM_OPTIONS_KEY,
-);
-
-const I18N_LANGS = Object.keys(i18nMap) as Lang[];
+type GitalkEditableProps = Omit<
+  GitalkProps,
+  "clientID" | "clientSecret" | "owner" | "repo" | "admin" | "number"
+>;
+const DEFAULT_EDITABLE_OPTIONS: GitalkEditableProps = {};
 
 const App = () => {
   const [issuesPage, setIssuesPage] = useState<number>(1);
@@ -61,21 +67,10 @@ const App = () => {
     localStorage.getItem(GITALK_CUSTOM_CSS_KEY) ?? DEFAULT_CSS,
   );
 
-  const [options, setOptions] = useState<
-    Omit<
-      GitalkProps,
-      "clientID" | "clientSecret" | "owner" | "repo" | "admin" | "number"
-    >
-  >(
+  const [options, setOptions] = useState<GitalkEditableProps>(
     storedGitalkCustomOptions
       ? JSON.parse(storedGitalkCustomOptions)
-      : {
-          createIssueManually: true,
-          onCreateIssue: (issue) => {
-            setIssues((prev) => [issue, ...(prev ?? [])]);
-            setIssueNumber(issue.number);
-          },
-        },
+      : DEFAULT_EDITABLE_OPTIONS,
   );
 
   useEffect(() => {
@@ -344,6 +339,25 @@ const App = () => {
               </select>
             </div>
             <div>
+              <label htmlFor="collapsedHeight">Collapsed height</label>
+              <select
+                name="collapsedHeight"
+                defaultValue={options.collapsedHeight ?? "-"}
+                onChange={(e) => {
+                  e.persist();
+                  setOptions((prev) => ({
+                    ...prev,
+                    collapsedHeight: Number(e.target.value) || undefined,
+                  }));
+                }}
+              >
+                <option value="-">-</option>
+                <option value="300">300px</option>
+                <option value="600">600px</option>
+                <option value="900">900px</option>
+              </select>
+            </div>
+            {/* <div>
               <label htmlFor="createIssueManually">Create issue manually</label>
               <input
                 type="checkbox"
@@ -357,7 +371,7 @@ const App = () => {
                   }));
                 }}
               />
-            </div>
+            </div> */}
             <div>
               <label htmlFor="enableHotKey">Enable hot key</label>
               <input
@@ -387,6 +401,15 @@ const App = () => {
                   }));
                 }}
               />
+            </div>
+            <div>
+              <button
+                className="small"
+                style={{ marginRight: 8 }}
+                onClick={() => setOptions(DEFAULT_EDITABLE_OPTIONS)}
+              >
+                Reset
+              </button>
             </div>
           </form>
         </section>
@@ -447,7 +470,15 @@ const App = () => {
         className="section__preview__container"
       >
         {!!issueNumber && (
-          <Gitalk {...options} {...GITALK_BASE_OPTIONS} number={issueNumber} />
+          <Gitalk
+            {...options}
+            {...GITALK_BASE_OPTIONS}
+            number={issueNumber}
+            onCreateIssue={(issue) => {
+              setIssues((prev) => [issue, ...(prev ?? [])]);
+              setIssueNumber(issue.number);
+            }}
+          />
         )}
       </div>
     </div>
