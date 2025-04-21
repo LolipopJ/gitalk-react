@@ -22,7 +22,7 @@ Developed for modern browsers, focusing on reducing build size and enhancing dev
 ## Features in Development
 
 - [ ] Feature: Support editing comments published by the user in Gitalk React.
-- [ ] Feature: Automatically collapse overly long comments, allowing users to click to expand the comment.
+- [x] Feature: Support collapse overly long comments, allowing users to click to expand the comment.
 - [ ] refactor: Gradually remove dependencies on non-essential third-party libraries to reduce build size.
 - [ ] test: Add automated testing processes to enhance project robustness.
 - [x] chore: Deploy [preview environment](https://lolipopj.github.io/gitalk-react/).
