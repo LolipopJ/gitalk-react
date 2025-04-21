@@ -1,5 +1,4 @@
-import { type GitalkProps } from "../../gitalk";
-import type { Comment } from "../../interfaces";
+import type { Comment, GitalkProps } from "../../interfaces";
 
 export interface IssueCommentsQLResponse {
   repository: {

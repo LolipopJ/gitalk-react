@@ -177,6 +177,10 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 }
 ```
 
+### collapsedHeight `number`
+
+当评论的高度大于 `${collapsedHeight}px` 时，自动折叠到 `${collapsedHeight}px`。
+
 ### updateCountCallback `(count: number) => void`
 
 评论数量更新的调用的回调方法。
@@ -208,6 +212,10 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
   --gt-color-comment-shadow: rgb(218.4, 218.4, 218.4);
   --gt-color-comment-shadow-admin: rgb(203.1, 203.1, 203.1);
   --gt-color-comment-txt: #333;
+  --gt-color-comment-collapse-bg: linear-gradient(
+    rgb(245 245 245 / 10%),
+    rgb(245 245 245 / 90%)
+  );
   --gt-color-link-active: #333;
   --gt-color-btn: #fff;
   --gt-color-popbg: #fff;
@@ -233,6 +241,10 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
   --gt-color-comment-shadow: rgb(78.9, 78.9, 78.9);
   --gt-color-comment-shadow-admin: rgb(94.2, 94.2, 94.2);
   --gt-color-comment-txt: #fafafa;
+  --gt-color-comment-collapse-bg: linear-gradient(
+    rgb(20 20 20 / 10%),
+    rgb(20 20 20 / 90%)
+  );
   --gt-color-link-active: #fafafa;
   --gt-color-btn: #eee;
   --gt-color-popbg: #171717;

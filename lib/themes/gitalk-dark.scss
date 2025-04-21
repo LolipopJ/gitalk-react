@@ -18,6 +18,10 @@
   --gt-color-comment-shadow: #{color.adjust(#212121, $lightness: 18%)};
   --gt-color-comment-shadow-admin: #{color.adjust(#212121, $lightness: 24%)};
   --gt-color-comment-txt: #fafafa;
+  --gt-color-comment-collapse-bg: linear-gradient(
+    rgb(20 20 20 / 10%),
+    rgb(20 20 20 / 90%)
+  );
   --gt-color-link-active: #fafafa;
   --gt-color-btn: #eee;
   --gt-color-popbg: #171717;

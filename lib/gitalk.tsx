@@ -2,35 +2,31 @@ import "./i18n";
 
 import { useRequest } from "ahooks";
 import React, {
-  forwardRef,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import FlipMove from "react-flip-move";
 
-import ArrowDown from "./assets/arrow-down.svg?raw";
-import Github from "./assets/github.svg?raw";
-import Tip from "./assets/tip.svg?raw";
-import Action from "./components/action";
-import Avatar from "./components/avatar";
 import Button from "./components/button";
-import Comment, { type CommentProps } from "./components/comment";
-import Svg from "./components/svg";
+import { type CommentProps } from "./components/comment";
+import CommentTextarea from "./components/comment-textarea";
+import CommentsList from "./components/comments-list";
+import Meta from "./components/meta";
 import {
   ACCESS_TOKEN_KEY,
   DATE_FNS_LOCALE_MAP,
+  DEFAULT_FLIP_MOVE_OPTIONS,
   DEFAULT_LABELS,
+  DEFAULT_PROXY,
   DEFAULT_USER,
-  HOMEPAGE,
-  VERSION,
 } from "./constants";
-import I18nContext from "./contexts/I18nContext";
+import I18nContext, { type I18nContextValue } from "./contexts/I18nContext";
 import i18n, { type Lang } from "./i18n";
 import type {
   Comment as CommentType,
+  GitalkProps,
   Issue as IssueType,
   User as UserType,
 } from "./interfaces";
@@ -41,167 +37,8 @@ import {
 import getOctokitInstance from "./services/request";
 import { getAccessToken, getAuthorizeUrl } from "./services/user";
 import { supportsCSSVariables, supportsES2020 } from "./utils/compatibility";
-import { hasClassInParent } from "./utils/dom";
 import logger from "./utils/logger";
 import { parseSearchQuery, stringifySearchQuery } from "./utils/query";
-
-export interface GitalkProps
-  extends Omit<
-    React.DetailedHTMLProps<
-      React.HTMLAttributes<HTMLDivElement>,
-      HTMLDivElement
-    >,
-    "id" | "title"
-  > {
-  /**
-   * GitHub Application Client ID.
-   */
-  clientID: string;
-  /**
-   * GitHub Application Client Secret.
-   */
-  clientSecret: string;
-  /**
-   * GitHub repository owner.
-   * Can be personal user or organization.
-   */
-  owner: string;
-  /**
-   * Name of Github repository.
-   */
-  repo: string;
-  /**
-   * GitHub repository owner and collaborators.
-   * (Users who having write access to this repository)
-   */
-  admin: string[];
-  /**
-   * The unique id of the page.
-   * Length must less than 50.
-   *
-   * @default location.host + location.pathname
-   */
-  id?: string;
-  /**
-   * The issue ID of the page.
-   * If the number attribute is not defined, issue will be located using id.
-   */
-  number?: number;
-  /**
-   * GitHub issue labels.
-   *
-   * @default ['Gitalk']
-   */
-  labels?: string[];
-  /**
-   * GitHub issue title.
-   *
-   * @default document.title
-   */
-  title?: string;
-  /**
-   * GitHub issue body.
-   *
-   * @default location.href + header.meta[description]
-   */
-  body?: string;
-  /**
-   * Localization language key.
-   *
-   * @default navigator.language
-   */
-  language?: Lang;
-  /**
-   * Pagination size, with maximum 100.
-   *
-   * @default 10
-   */
-  perPage?: number;
-  /**
-   * Comment sorting direction.
-   * Available values are `last` and `first`.
-   *
-   * @default "last"
-   */
-  pagerDirection?: "last" | "first";
-  /**
-   * By default, Gitalk will create a corresponding github issue for your every single page automatically when the logined user is belong to the admin users.
-   * You can create it manually by setting this option to true.
-   *
-   * @default false
-   */
-  createIssueManually?: boolean;
-  /**
-   * Enable hot key (cmd|ctrl + enter) submit comment.
-   *
-   * @default true
-   */
-  enableHotKey?: boolean;
-  /**
-   * Facebook-like distraction free mode.
-   *
-   * @default false
-   */
-  distractionFreeMode?: boolean;
-  /**
-   * Comment list animation.
-   *
-   * @default
-   * ```ts
-   * {
-   *   staggerDelayBy: 150,
-   *   appearAnimation: 'accordionVertical',
-   *   enterAnimation: 'accordionVertical',
-   *   leaveAnimation: 'accordionVertical',
-   * }
-   * ```
-   * @link https://github.com/joshwcomeau/react-flip-move/blob/master/documentation/enter_leave_animations.md
-   */
-  flipMoveOptions?: FlipMove.FlipMoveProps;
-  /**
-   * GitHub oauth request reverse proxy for CORS.
-   * [Why need this?](https://github.com/isaacs/github/issues/330)
-   *
-   * @default "https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token"
-   */
-  proxy?: string;
-  /**
-   * Default user field if comments' author is not provided
-   *
-   * @default
-   * ```ts
-   * {
-   *   avatar_url: "//avatars1.githubusercontent.com/u/29697133?s=50",
-   *   login: "null",
-   *   html_url: ""
-   * }
-   */
-  defaultUser?: CommentType["user"];
-  /**
-   * Default user field if comments' author is not provided
-   *
-   * @deprecated use `defaultUser`
-   */
-  defaultAuthor?: IssueCommentsQLResponse["repository"]["issue"]["comments"]["nodes"][number]["author"];
-  /**
-   * Callback method invoked when updating the number of comments.
-   *
-   * @param count comments number
-   */
-  updateCountCallback?: (count: number) => void;
-  /**
-   * Callback method invoked when a new issue is successfully created.
-   *
-   * @param issue created issue
-   */
-  onCreateIssue?: (issue: IssueType) => void;
-  /**
-   * Callback method invoked when a new comment is successfully created.
-   *
-   * @param comment created comment
-   */
-  onCreateComment?: (comment: CommentType) => void;
-}
 
 const isModernBrowser = supportsCSSVariables() && supportsES2020();
 
@@ -227,15 +64,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     createIssueManually = false,
     enableHotKey = true,
     distractionFreeMode = false,
-    flipMoveOptions = {
-      staggerDelayBy: 150,
-      appearAnimation: "accordionVertical",
-      enterAnimation: "accordionVertical",
-      leaveAnimation: "accordionVertical",
-    },
-    proxy = "https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token",
+    flipMoveOptions = DEFAULT_FLIP_MOVE_OPTIONS,
+    proxy = DEFAULT_PROXY,
     defaultUser: propsDefaultUser,
     defaultAuthor: propsDefaultAuthor,
+    collapsedHeight: propsCollapsedHeight,
     updateCountCallback,
     onCreateIssue,
     onCreateComment,
@@ -257,9 +90,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputComment, setInputComment] = useState<string>("");
-  const prevInputCommentRef = useRef<string>();
   const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
-  const [isPreviewComment, setIsPreviewComment] = useState<boolean>(false);
 
   const [commentsCount, setCommentsCount] = useState<number>(0);
   const [commentsCursor, setCommentsCursor] = useState("");
@@ -284,12 +115,22 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           : DEFAULT_USER,
     [propsDefaultAuthor, propsDefaultUser],
   );
-
-  const [showPopup, setShowPopup] = useState<boolean>(false);
+  const collapsedHeight =
+    propsCollapsedHeight && propsCollapsedHeight > 0
+      ? propsCollapsedHeight
+      : undefined;
 
   const [alert, setAlert] = useState<string>("");
 
   const polyglot = useMemo(() => i18n(language), [language]);
+  const i18nContextValue: I18nContextValue = useMemo(
+    () => ({
+      language,
+      polyglot,
+      dateFnsLocaleMap: DATE_FNS_LOCALE_MAP,
+    }),
+    [language, polyglot],
+  );
 
   const {
     data: accessToken = localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined,
@@ -620,7 +461,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     data: localComments = [],
     mutate: setLocalComments,
     loading: createIssueCommentLoading,
-    run: runCreateIssueComment,
+    runAsync: runCreateIssueComment,
   } = useRequest(
     async (): Promise<CommentType[]> => {
       const { number: currentIssueNumber } = issue as IssueType;
@@ -652,7 +493,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         logger.s(`Create issue comment successfully.`);
 
         setInputComment("");
-        setIsPreviewComment(false);
         setCommentsCount((prev) => prev + 1);
 
         onCreateComment?.(createdIssueComment);
@@ -716,34 +556,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   useEffect(() => {
     updateCountCallback?.(commentsCount);
   }, [commentsCount, updateCountCallback]);
-
-  const {
-    data: commentHtml = "",
-    loading: getCommentHtmlLoading,
-    run: runGetCommentHtml,
-  } = useRequest(
-    async (): Promise<string> => {
-      if (prevInputCommentRef.current === inputComment) return commentHtml;
-
-      const getPreviewedHtmlRes = await octokit.request("POST /markdown", {
-        text: inputComment,
-      });
-
-      if (getPreviewedHtmlRes.status === 200) {
-        prevInputCommentRef.current = inputComment;
-
-        const _commentHtml = getPreviewedHtmlRes.data;
-        return _commentHtml;
-      } else {
-        setAlert(`Preview rendered comment failed: ${getPreviewedHtmlRes}`);
-        logger.e(`Preview rendered comment failed:`, getPreviewedHtmlRes);
-        return "";
-      }
-    },
-    {
-      manual: true,
-    },
-  );
 
   const { loading: likeOrDislikeCommentLoading, run: runLikeOrDislikeComment } =
     useRequest(
@@ -864,29 +676,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     [initialized, issue],
   );
 
-  const hidePopup = useCallback((e: MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target && hasClassInParent(target, "gt-user", "gt-popup")) {
-      return;
-    }
-    document.removeEventListener("click", hidePopup);
-    setShowPopup(false);
-  }, []);
-
-  const onShowOrHidePopup: React.MouseEventHandler<HTMLDivElement> = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    setShowPopup((visible) => {
-      if (visible) {
-        document.removeEventListener("click", hidePopup);
-      } else {
-        document.addEventListener("click", hidePopup);
-      }
-      return !visible;
-    });
-  };
-
   const onLogin = () => {
     const url = getAuthorizeUrl(clientID);
     window.location.href = url;
@@ -912,6 +701,14 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     setIsInputFocused(false);
   };
 
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight + 2}px`;
+    }
+  }, [inputComment]);
+
   const onCommentInputKeyDown: React.KeyboardEventHandler<
     HTMLTextAreaElement
   > = (e) => {
@@ -920,40 +717,35 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     }
   };
 
-  const onCommentInputPreview: React.MouseEventHandler<
-    HTMLButtonElement
-  > = () => {
-    if (isPreviewComment) {
-      setIsPreviewComment(false);
-    } else {
-      setIsPreviewComment(true);
-      runGetCommentHtml();
-    }
-  };
+  const onReplyComment: CommentProps["onReply"] = useCallback(
+    (repliedComment) => {
+      const { body: repliedCommentBody = "", user: repliedCommentUser } =
+        repliedComment;
+      let repliedCommentBodyArray = repliedCommentBody.split("\n");
+      const repliedCommentUsername = repliedCommentUser?.login;
 
-  const onReplyComment: CommentProps["onReply"] = (repliedComment) => {
-    const { body: repliedCommentBody = "", user: repliedCommentUser } =
-      repliedComment;
-    let repliedCommentBodyArray = repliedCommentBody.split("\n");
-    const repliedCommentUsername = repliedCommentUser?.login;
+      if (repliedCommentUsername) {
+        repliedCommentBodyArray.unshift(`@${repliedCommentUsername}`);
+      }
+      repliedCommentBodyArray = repliedCommentBodyArray.map(
+        (text) => `> ${text}`,
+      );
 
-    if (repliedCommentUsername) {
-      repliedCommentBodyArray.unshift(`@${repliedCommentUsername}`);
-    }
-    repliedCommentBodyArray = repliedCommentBodyArray.map(
-      (text) => `> ${text}`,
-    );
+      setInputComment((prevComment) => {
+        if (prevComment) {
+          repliedCommentBodyArray.unshift("", "");
+        }
+        repliedCommentBodyArray.push("", "");
+        const newComment = `${prevComment}${repliedCommentBodyArray.join("\n")}`;
+        return newComment;
+      });
 
-    if (inputComment) {
-      repliedCommentBodyArray.unshift("", "");
-    }
-
-    repliedCommentBodyArray.push("", "");
-
-    const newComment = `${inputComment}${repliedCommentBodyArray.join("\n")}`;
-    setInputComment(newComment);
-    textareaRef.current?.focus();
-  };
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      });
+    },
+    [],
+  );
 
   if (!isModernBrowser) {
     logger.e(
@@ -980,286 +772,110 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     return null;
   }
 
-  const renderInitializing = () => {
-    return (
-      <div className="gt-initing">
-        <i className="gt-loader" />
-        <p className="gt-initing-text">{polyglot.t("init")}</p>
-      </div>
-    );
-  };
-
-  const renderIssueNotInitialized = () => {
-    return (
-      <div className="gt-no-init" key="no-init">
-        <p
-          dangerouslySetInnerHTML={{
-            __html: polyglot.t("no-found-related", {
-              link: `<a href="https://github.com/${owner}/${repo}/issues" target="_blank" rel="noopener noreferrer">Issues</a>`,
-            }),
-          }}
-        />
-        <p>
-          {polyglot.t("please-contact", {
-            user: admin.map((u) => `@${u}`).join(" "),
-          })}
-        </p>
-        {isAdmin ? (
-          <p>
-            <Button
-              onClick={runCreateIssue}
-              isLoading={createIssueLoading}
-              text={polyglot.t("init-issue")}
-            />
-          </p>
-        ) : null}
-        {!user && (
-          <Button
-            className="gt-btn-login"
-            onClick={onLogin}
-            text={polyglot.t("login-with-github")}
-          />
-        )}
-      </div>
-    );
-  };
-
-  const renderHeader = () => {
-    return (
-      <div className="gt-header" key="header">
-        {user ? (
-          <Avatar
-            className="gt-header-avatar"
-            src={user.avatar_url}
-            alt={user.login}
-            href={user.html_url}
-          />
-        ) : (
-          <a className="gt-avatar-github" onClick={onLogin}>
-            <Svg className="gt-ico-github" icon={Github} />
-          </a>
-        )}
-        <div className="gt-header-comment">
-          <textarea
-            ref={textareaRef}
-            className="gt-header-textarea"
-            style={{ display: isPreviewComment ? "none" : undefined }}
-            value={inputComment}
-            onChange={(e) => setInputComment(e.target.value)}
-            onFocus={onCommentInputFocus}
-            onBlur={onCommentInputBlur}
-            onKeyDown={onCommentInputKeyDown}
-            placeholder={polyglot.t("leave-a-comment")}
-          />
-          <div
-            className="gt-header-preview markdown-body"
-            style={{ display: isPreviewComment ? undefined : "none" }}
-            dangerouslySetInnerHTML={{
-              __html: getCommentHtmlLoading
-                ? "<span>Loading preview...</span>"
-                : commentHtml,
-            }}
-          />
-          <div className="gt-header-controls">
-            <a
-              className="gt-header-controls-tip"
-              href="https://guides.github.com/features/mastering-markdown/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Svg
-                className="gt-ico-tip"
-                icon={Tip}
-                text={polyglot.t("support-markdown")}
-              />
-            </a>
-
-            <Button
-              className="gt-btn-preview gt-btn--secondary"
-              onClick={onCommentInputPreview}
-              text={
-                isPreviewComment ? polyglot.t("edit") : polyglot.t("preview")
-              }
-              isLoading={getCommentHtmlLoading}
-              disabled={false}
-            />
-
-            {user ? (
-              <Button
-                className="gt-btn-public"
-                onClick={runCreateIssueComment}
-                text={polyglot.t("comment")}
-                isLoading={createIssueCommentLoading}
-                disabled={createIssueCommentLoading || !inputComment}
-              />
-            ) : (
-              <Button
-                className="gt-btn-login"
-                onClick={onLogin}
-                text={polyglot.t("login-with-github")}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Why forwardRef? https://www.npmjs.com/package/react-flip-move#usage-with-functional-components
-  const CommentWithForwardedRef = forwardRef<
-    HTMLDivElement,
-    { comment: CommentType }
-  >(({ comment }, ref) => {
-    const {
-      id: commentId,
-      user: commentAuthor,
-      reactionsHeart: commentReactionsHeart,
-    } = comment;
-
-    const commentAuthorName = commentAuthor?.login;
-    const isAuthor =
-      !!user && !!commentAuthorName && user.login === commentAuthorName;
-    const isAdmin =
-      !!commentAuthorName &&
-      !!admin.find(
-        (username) =>
-          username.toLowerCase() === commentAuthorName.toLowerCase(),
-      );
-    const heartReactionId = commentReactionsHeart?.nodes.find(
-      (node) => node.user.login === user?.login,
-    )?.databaseId;
-
-    return (
-      <div ref={ref}>
-        <Comment
-          comment={comment}
-          isAuthor={isAuthor}
-          isAdmin={isAdmin}
-          onReply={onReplyComment}
-          onLike={(like) => {
-            runLikeOrDislikeComment(like, commentId, heartReactionId);
-          }}
-          likeLoading={likeOrDislikeCommentLoading}
-        />
-      </div>
-    );
-  });
-
-  const renderCommentList = () => {
-    return (
-      <div className="gt-comments" key="comments">
-        <FlipMove {...flipMoveOptions}>
-          {loadedComments.map((comment) => (
-            <CommentWithForwardedRef key={comment.id} comment={comment} />
-          ))}
-        </FlipMove>
-        {!commentsCount && (
-          <p className="gt-comments-null">
-            {polyglot.t("first-comment-person")}
-          </p>
-        )}
-        {commentsCount > loadedComments.length ? (
-          <div className="gt-comments-controls">
-            <Button
-              className="gt-btn-loadmore"
-              onClick={runGetComments}
-              isLoading={getCommentsLoading}
-              text={polyglot.t("load-more")}
-            />
-          </div>
-        ) : null}
-      </div>
-    );
-  };
-
-  const renderMeta = () => {
-    const isDesc = commentsPagerDirection === "last";
-
-    return (
-      <div className="gt-meta" key="meta">
-        <span
-          className="gt-counts"
-          dangerouslySetInnerHTML={{
-            __html: polyglot.t("counts", {
-              counts: `<a class="gt-link gt-link-counts" href="${issue?.html_url}" target="_blank" rel="noopener noreferrer">${commentsCount}</a>`,
-              smart_count: commentsCount,
-            }),
-          }}
-        />
-        {showPopup && (
-          <div className="gt-popup">
-            {user
-              ? [
-                  <Action
-                    key={"sort-asc"}
-                    className={`gt-action-sortasc${!isDesc ? " is--active" : ""}`}
-                    onClick={() => setCommentsPagerDirection("first")}
-                    text={polyglot.t("sort-asc")}
-                  />,
-                  <Action
-                    key={"sort-desc"}
-                    className={`gt-action-sortdesc${isDesc ? " is--active" : ""}`}
-                    onClick={() => setCommentsPagerDirection("last")}
-                    text={polyglot.t("sort-desc")}
-                  />,
-                ]
-              : null}
-            {user ? (
-              <Action
-                className="gt-action-logout"
-                onClick={onLogout}
-                text={polyglot.t("logout")}
-              />
-            ) : (
-              <a className="gt-action gt-action-login" onClick={onLogin}>
-                {polyglot.t("login-with-github")}
-              </a>
-            )}
-            <div className="gt-copyright">
-              <a
-                className="gt-link gt-link-project"
-                href={HOMEPAGE}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                GitalkR
-              </a>
-              <span className="gt-version">{VERSION}</span>
-            </div>
-          </div>
-        )}
-        <div className="gt-user">
-          <div
-            className={`gt-user-inner${showPopup ? " is--poping" : ""}`}
-            onClick={onShowOrHidePopup}
-          >
-            <span className="gt-user-name">
-              {user?.login ?? polyglot.t("anonymous")}
-            </span>
-            <Svg className="gt-ico-arrdown" icon={ArrowDown} />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <I18nContext.Provider
-      value={{ language, polyglot, dateFnsLocaleMap: DATE_FNS_LOCALE_MAP }}
-    >
+    <I18nContext.Provider value={i18nContextValue}>
       <div
         className={`gt-container${isInputFocused ? " gt-input-focused" : ""} ${className}`}
         {...restProps}
       >
+        {/* Alert */}
         {alert && <div className="gt-error">{alert}</div>}
-        {initialized
-          ? issueCreated
-            ? [renderMeta(), renderHeader(), renderCommentList()]
-            : renderIssueNotInitialized()
-          : renderInitializing()}
+
+        {initialized ? (
+          issueCreated ? (
+            <>
+              {/* Meta */}
+              <Meta
+                issue={issue}
+                user={user}
+                commentsCount={commentsCount}
+                pagerDirection={commentsPagerDirection}
+                onPagerDirectionChange={setCommentsPagerDirection}
+                onLogin={onLogin}
+                onLogout={onLogout}
+              />
+
+              {/* Comment textarea */}
+              <CommentTextarea
+                value={inputComment}
+                onChange={(e) => setInputComment(e.target.value)}
+                onFocus={onCommentInputFocus}
+                onBlur={onCommentInputBlur}
+                onKeyDown={onCommentInputKeyDown}
+                placeholder={polyglot.t("leave-a-comment")}
+                octokit={octokit}
+                user={user}
+                onLogin={onLogin}
+                onCreateComment={async () => {
+                  await runCreateIssueComment();
+                }}
+                createCommentLoading={createIssueCommentLoading}
+                onPreviewError={(e) => {
+                  setAlert(`Preview rendered comment failed: ${e}`);
+                  logger.e(`Preview rendered comment failed:`, e);
+                }}
+              />
+
+              {/* Comments */}
+              <CommentsList
+                comments={loadedComments}
+                commentsCount={commentsCount}
+                onGetComments={runGetComments}
+                getCommentsLoading={getCommentsLoading}
+                flipMoveOptions={flipMoveOptions}
+                user={user}
+                admin={admin}
+                onReply={onReplyComment}
+                onLike={runLikeOrDislikeComment}
+                likeLoading={likeOrDislikeCommentLoading}
+                collapsedHeight={collapsedHeight}
+              />
+            </>
+          ) : (
+            // Issue not created placeholder
+            <div className="gt-no-init" key="no-init">
+              <p
+                dangerouslySetInnerHTML={{
+                  __html: polyglot.t("no-found-related", {
+                    link: `<a href="https://github.com/${owner}/${repo}/issues" target="_blank" rel="noopener noreferrer">Issues</a>`,
+                  }),
+                }}
+              />
+              <p>
+                {polyglot.t("please-contact", {
+                  user: admin.map((u) => `@${u}`).join(" "),
+                })}
+              </p>
+              {isAdmin ? (
+                <p>
+                  <Button
+                    onClick={runCreateIssue}
+                    isLoading={createIssueLoading}
+                    text={polyglot.t("init-issue")}
+                  />
+                </p>
+              ) : null}
+              {!user && (
+                <Button
+                  className="gt-btn-login"
+                  onClick={onLogin}
+                  text={polyglot.t("login-with-github")}
+                />
+              )}
+            </div>
+          )
+        ) : (
+          // Loading issue placeholder
+          <div className="gt-initing">
+            <i className="gt-loader" />
+            <p className="gt-initing-text">{polyglot.t("init")}</p>
+          </div>
+        )}
       </div>
     </I18nContext.Provider>
   );
 };
+
+export type { GitalkProps };
 
 export default Gitalk;

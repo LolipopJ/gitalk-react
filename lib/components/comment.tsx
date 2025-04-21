@@ -1,12 +1,13 @@
 import { formatDistanceToNow, parseISO } from "date-fns";
-import React, { useContext, useEffect, useMemo, useRef } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 
+import ArrowDown from "../assets/arrow-down.svg?raw";
 import Edit from "../assets/edit.svg?raw";
 import Heart from "../assets/heart.svg?raw";
 import HeartFilled from "../assets/heart-filled.svg?raw";
 import Reply from "../assets/reply.svg?raw";
 import I18nContext from "../contexts/I18nContext";
-import type { Comment as CommentType } from "../interfaces";
+import type { Comment as CommentType, GitalkProps } from "../interfaces";
 import Avatar from "./avatar";
 import Svg from "./svg";
 
@@ -21,6 +22,7 @@ export interface CommentProps
   onReply: (comment: CommentType) => void;
   onLike: (like: boolean, comment: CommentType) => void;
   likeLoading: boolean;
+  collapsedHeight?: GitalkProps["collapsedHeight"];
 }
 
 const Comment: React.FC<CommentProps> = ({
@@ -30,10 +32,13 @@ const Comment: React.FC<CommentProps> = ({
   onReply,
   onLike,
   likeLoading,
+  collapsedHeight,
   className = "",
   ...restProps
 }) => {
   const ref = useRef<HTMLDivElement>(null);
+
+  const [collapsed, setCollapsed] = useState<boolean>(false);
 
   const { language, polyglot, dateFnsLocaleMap } = useContext(I18nContext);
 
@@ -72,6 +77,17 @@ const Comment: React.FC<CommentProps> = ({
     return () => {};
   }, []);
 
+  useEffect(() => {
+    const commentElement = ref.current;
+
+    if (commentElement && collapsedHeight) {
+      const commentElementHeight = commentElement.clientHeight;
+      if (commentElementHeight > collapsedHeight) {
+        setCollapsed(true);
+      }
+    }
+  }, [collapsedHeight]);
+
   return (
     <div
       ref={ref}
@@ -85,7 +101,12 @@ const Comment: React.FC<CommentProps> = ({
         href={user?.html_url}
       />
 
-      <div className="gt-comment-content">
+      <div
+        className="gt-comment-content"
+        style={
+          collapsed ? { maxHeight: collapsedHeight, overflow: "hidden" } : {}
+        }
+      >
         <div className="gt-comment-header">
           <a
             className="gt-comment-username"
@@ -148,6 +169,14 @@ const Comment: React.FC<CommentProps> = ({
             __html: body_html ?? "",
           }}
         />
+        {collapsed && (
+          <div
+            className="gt-comment-collapse"
+            onClick={() => setCollapsed(false)}
+          >
+            <Svg className="gt-ico-collapse" icon={ArrowDown} />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -14,14 +14,22 @@ import {
 } from "date-fns/locale";
 
 import packageJson from "../../package.json";
-import { type GitalkProps } from "../gitalk";
 import { type Lang } from "../i18n";
+import type { GitalkProps } from "../interfaces";
 
 export const VERSION = packageJson.version;
 export const HOMEPAGE = packageJson.homepage;
 
 export const DEFAULT_LANG: Lang = "en";
 export const DEFAULT_LABELS = ["Gitalk"];
+export const DEFAULT_FLIP_MOVE_OPTIONS: GitalkProps["flipMoveOptions"] = {
+  staggerDelayBy: 150,
+  appearAnimation: "accordionVertical",
+  enterAnimation: "accordionVertical",
+  leaveAnimation: "accordionVertical",
+};
+export const DEFAULT_PROXY =
+  "https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token";
 export const DEFAULT_AVATAR =
   "https://cdn.jsdelivr.net/npm/gitalk@1/src/assets/icon/github.svg";
 export const DEFAULT_USER: GitalkProps["defaultUser"] = {

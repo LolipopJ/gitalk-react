@@ -177,6 +177,10 @@ The default user used when the comment user does not exist.
 }
 ```
 
+### collapsedHeight `number`
+
+When the height of the comment exceeds `${collapsedHeight}px`, it will automatically collapse to `${collapsedHeight}px`.
+
 ### updateCountCallback `(count: number) => void`
 
 Callback method invoked when updating the number of comments.
@@ -208,6 +212,10 @@ When you import light theme with `import 'gitalk-react/gitalk.css'`, the default
   --gt-color-comment-shadow: rgb(218.4, 218.4, 218.4);
   --gt-color-comment-shadow-admin: rgb(203.1, 203.1, 203.1);
   --gt-color-comment-txt: #333;
+  --gt-color-comment-collapse-bg: linear-gradient(
+    rgb(245 245 245 / 10%),
+    rgb(245 245 245 / 90%)
+  );
   --gt-color-link-active: #333;
   --gt-color-btn: #fff;
   --gt-color-popbg: #fff;
@@ -233,6 +241,10 @@ When importing dark theme with `import 'gitalk-react/gitalk-dark.css'`, the defa
   --gt-color-comment-shadow: rgb(78.9, 78.9, 78.9);
   --gt-color-comment-shadow-admin: rgb(94.2, 94.2, 94.2);
   --gt-color-comment-txt: #fafafa;
+  --gt-color-comment-collapse-bg: linear-gradient(
+    rgb(20 20 20 / 10%),
+    rgb(20 20 20 / 90%)
+  );
   --gt-color-link-active: #fafafa;
   --gt-color-btn: #eee;
   --gt-color-popbg: #171717;
