@@ -226,7 +226,7 @@ const App = () => {
         </section>
 
         <section className="section__themes">
-          <h2>Themes</h2>
+          <h2>🎨 Themes</h2>
           <div
             style={{
               display: "flex",
@@ -245,7 +245,7 @@ const App = () => {
               </button>
             ))}
 
-            <div style={{ width: "100%", marginTop: 12 }}>
+            <div style={{ width: "100%" }}>
               <textarea
                 style={{
                   width: "calc(100% - 16px)",
@@ -274,7 +274,7 @@ const App = () => {
         </section>
 
         <section className="section__options">
-          <h2>Options</h2>
+          <h2>📐 Options</h2>
           <form
             style={{
               display: "flex",
@@ -391,8 +391,8 @@ const App = () => {
           </form>
         </section>
 
-        <section className="section__chats">
-          <h2>Chats</h2>
+        <section className="section__preview">
+          <h2>💬 Preview</h2>
           <div
             style={{
               display: "flex",
@@ -424,6 +424,7 @@ const App = () => {
                 ? ""
                 : "NO ISSUE LOCATED"}
             <button
+              className="small"
               onClick={() => setIssuesPage((prev) => prev + 1)}
               disabled={getIssuesLoading || issuesLoaded}
             >
@@ -435,22 +436,15 @@ const App = () => {
             </button>
           </div>
         </section>
-
-        <section className="section__preview">
-          <h2>Preview</h2>
-        </section>
       </div>
 
       <div
         style={{
-          margin: "16px -24px 0",
-          minHeight: "600px",
-          padding: "24px 32px",
-          borderRadius: 8,
           background: theme === "light" ? "#fff" : "#171717",
           boxShadow:
             theme === "light" ? "0 4px 12px 0 #ccc" : "0 4px 12px 0 #333",
         }}
+        className="section__preview__container"
       >
         {!!issueNumber && (
           <Gitalk {...options} {...GITALK_BASE_OPTIONS} number={issueNumber} />

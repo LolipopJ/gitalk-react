@@ -11,6 +11,10 @@ body {
 }
 
 .sections {
+  section {
+    margin-bottom: 28px;
+  }
+
   h1,
   h2,
   h3,
@@ -21,10 +25,15 @@ body {
   }
 
   form {
-    label {
-      &::after {
-        content: ':';
-        margin-right: 8px;
+    > div {
+      display: flex;
+      align-items: center;
+
+      label {
+        &::after {
+          margin-right: 8px;
+          content: ':';
+        }
       }
     }
   }
@@ -80,6 +89,21 @@ body {
     &.outlined {
       color: var(--primary);
       border-color: var(--primary);
+    }
+  }
+}
+
+.section {
+  &__preview {
+    &__container {
+      min-height: 600px;
+      padding: 12px 32px;
+      margin: 0 -24px;
+      border-radius: 8px;
+
+      @media (width <= 480px) {
+        padding: 8px 24px;
+      }
     }
   }
 }
