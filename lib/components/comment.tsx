@@ -96,12 +96,15 @@ const Comment: React.FC<CommentProps> = ({
             {user?.login}
           </a>
           <div className="gt-comment-date" title={created_at}>
-            {polyglot.t("commented") +
-              " " +
-              formatDistanceToNow(parseISO(created_at), {
+            <span className="gt-comment-date__prefix">
+              {polyglot.t("commented")}
+            </span>
+            <span className="gt-comment-date__time">
+              {formatDistanceToNow(parseISO(created_at), {
                 addSuffix: true,
                 locale: dateFnsLocaleMap[language],
               })}
+            </span>
           </div>
           <div className="gt-comment-actions">
             <a

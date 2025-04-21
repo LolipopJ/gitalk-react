@@ -38,7 +38,7 @@ $gt-size-avatar: em(50px);
 $gt-size-avatar-mobi: em(32px);
 $gt-size-textarea-min-height: em(82px);
 $gt-mask-z-index: 9999;
-$gt-breakpoint-mobile: 479px;
+$gt-breakpoint-mobile: 480px;
 
 .gt-container {
   box-sizing: border-box;
@@ -496,6 +496,18 @@ $gt-breakpoint-mobile: 479px;
       &-date {
         margin-left: em(8px);
         color: var(--gt-color-sub);
+
+        &__prefix {
+          @include mobile {
+            display: none;
+          }
+        }
+
+        &__time {
+          @include mobile {
+            font-size: $gt-size-base * 0.7;
+          }
+        }
       }
 
       &-actions {
