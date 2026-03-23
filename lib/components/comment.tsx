@@ -1,5 +1,6 @@
 import cn from "classnames";
 import { formatDistanceToNow, parseISO } from "date-fns";
+import { enUS } from "date-fns/locale";
 import React, {
   useContext,
   useEffect,
@@ -141,7 +142,7 @@ const Comment: React.FC<CommentProps> = ({
             <span className="gt-comment-date__time">
               {formatDistanceToNow(parseISO(created_at), {
                 addSuffix: true,
-                locale: dateFnsLocaleMap[language],
+                locale: dateFnsLocaleMap[language] ?? enUS,
               })}
             </span>
           </div>

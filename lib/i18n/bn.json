@@ -1,0 +1,20 @@
+{
+  "init": "Gitalk লোড হচ্ছে ...",
+  "no-found-related": "মতামত করার জন্য সম্পর্কিত %{link} পাওয়া যায়নি",
+  "please-contact": "মন্তব্য আরম্ভ করতে %{user}-এর সাথে যোগাযোগ করুন",
+  "init-issue": "সমস্যা তৈরি করুন",
+  "leave-a-comment": "মন্তব্য করুন",
+  "preview": "পূর্বরূপ",
+  "edit": "সম্পাদনা",
+  "comment": "মন্তব্য",
+  "support-markdown": "Markdown সমর্থিত",
+  "login-with-github": "GitHub দিয়ে লগইন",
+  "first-comment-person": "প্রথম মন্তব্যকারী হন!",
+  "commented": "মন্তব্য করেছে",
+  "load-more": "আরও লোড করুন",
+  "counts": "%{counts} মন্তব্য",
+  "sort-asc": "প্রাচীন থেকে নতুন ক্রমানুসারে",
+  "sort-desc": "নতুন থেকে পুরাতন ক্রমানুসারে",
+  "logout": "লগ আউট",
+  "anonymous": "নামবিহীন"
+}

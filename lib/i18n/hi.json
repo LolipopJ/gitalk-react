@@ -1,0 +1,20 @@
+{
+  "init": "Gitalk लोड हो रहा है ...",
+  "no-found-related": "टिप्पणी के लिए संबंधित %{link} नहीं मिला",
+  "please-contact": "कृपया टिप्पणी आरंभ करने के लिए %{user} से संपर्क करें",
+  "init-issue": "समस्या बनाएँ",
+  "leave-a-comment": "एक टिप्पणी छोड़ें",
+  "preview": "पूर्वावलोकन",
+  "edit": "संपादित करें",
+  "comment": "टिप्पणी",
+  "support-markdown": "Markdown समर्थित है",
+  "login-with-github": "GitHub से लॉगिन करें",
+  "first-comment-person": "पहला टिप्पणी करने वाला बनें!",
+  "commented": "टिप्पणी की",
+  "load-more": "और लोड करें",
+  "counts": "%{counts} टिप्पणी |||| %{counts} टिप्पणियाँ",
+  "sort-asc": "पुराने से नए क्रम में",
+  "sort-desc": "नए से पुराने क्रम में",
+  "logout": "लॉगआउट",
+  "anonymous": "अनाम"
+}

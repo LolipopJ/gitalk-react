@@ -1,0 +1,20 @@
+{
+  "init": "Gitalk لوڈ ہو رہا ہے ...",
+  "no-found-related": "تبصرہ کرنے کے لیے متعلقہ %{link} نہیں ملا",
+  "please-contact": "تبصرہ شروع کرنے کے لیے براہ کرم %{user} سے رابطہ کریں",
+  "init-issue": "مسئلہ بنائیں",
+  "leave-a-comment": "ایک تبصرہ چھوڑیں",
+  "preview": "پیش نظارہ",
+  "edit": "ترمیم کریں",
+  "comment": "تبصرہ",
+  "support-markdown": "Markdown کی حمایت کرتا ہے",
+  "login-with-github": "GitHub کے ساتھ لاگ ان کریں",
+  "first-comment-person": "پہلا تبصرہ کرنے والا بنیں!",
+  "commented": "نے تبصرہ کیا",
+  "load-more": "مزید لوڈ کریں",
+  "counts": "%{counts} تبصرہ |||| %{counts} تبصرے",
+  "sort-asc": "سب سے پرانے سے ترتیب",
+  "sort-desc": "سب سے نئے سے ترتیب",
+  "logout": "لاگ آؤٹ",
+  "anonymous": "گمنام"
+}

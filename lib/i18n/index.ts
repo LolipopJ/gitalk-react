@@ -1,31 +1,44 @@
 import Polyglot from "node-polyglot";
 
 import { DEFAULT_LANG } from "../constants";
-import DE from "./de.json";
-import EN from "./en.json";
-import ES from "./es-ES.json";
-import FA from "./fa.json";
-import FR from "./fr.json";
-import JA from "./ja.json";
-import KO from "./ko.json";
-import PL from "./pl.json";
-import RU from "./ru.json";
-import ZHCN from "./zh-CN.json";
-import ZHTW from "./zh-TW.json";
+import ar from "./ar.json";
+import bn from "./bn.json";
+import de from "./de.json";
+import en from "./en.json";
+import es from "./es.json";
+import fa from "./fa.json";
+import fr from "./fr.json";
+import hi from "./hi.json";
+import ja from "./ja.json";
+import ko from "./ko.json";
+import pl from "./pl.json";
+import pt from "./pt.json";
+import ru from "./ru.json";
+import ur from "./ur.json";
+import zhCN from "./zh-CN.json";
+import zhTW from "./zh-TW.json";
 
 export const i18nMap = {
-  zh: ZHCN,
-  "zh-CN": ZHCN,
-  "zh-TW": ZHTW,
-  en: EN,
-  "es-ES": ES,
-  fr: FR,
-  ru: RU,
-  de: DE,
-  pl: PL,
-  ko: KO,
-  fa: FA,
-  ja: JA,
+  en,
+  zh: zhCN,
+  "zh-CN": zhCN,
+  "zh-SG": zhCN,
+  "zh-TW": zhTW,
+  "zh-HK": zhTW,
+  "zh-MO": zhTW,
+  hi,
+  es,
+  fr,
+  ar,
+  bn,
+  ru,
+  pt,
+  ur,
+  ko,
+  ja,
+  de,
+  pl,
+  fa,
 };
 
 export type Lang = keyof typeof i18nMap;

@@ -886,4 +886,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
 export type { GitalkProps };
 
+export { DEFAULT_FLIP_MOVE_OPTIONS };
+
 export default Gitalk;

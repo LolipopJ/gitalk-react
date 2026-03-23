@@ -1,0 +1,20 @@
+{
+  "init": "Carregando Gitalk ...",
+  "no-found-related": "Não foi encontrado %{link} relacionado para comentar",
+  "please-contact": "Por favor contate %{user} para inicializar o comentário",
+  "init-issue": "Criar problema",
+  "leave-a-comment": "Deixe um comentário",
+  "preview": "Pré-visualizar",
+  "edit": "Editar",
+  "comment": "Comentar",
+  "support-markdown": "Suporta Markdown",
+  "login-with-github": "Entrar com GitHub",
+  "first-comment-person": "Seja a primeira pessoa a deixar um comentário!",
+  "commented": "comentou",
+  "load-more": "Carregar mais",
+  "counts": "%{counts} comentário |||| %{counts} comentários",
+  "sort-asc": "Ordenar do mais antigo",
+  "sort-desc": "Ordenar do mais recente",
+  "logout": "Sair",
+  "anonymous": "Anônimo"
+}

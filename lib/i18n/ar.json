@@ -1,0 +1,20 @@
+{
+  "init": "جارٍ تحميل Gitalk ...",
+  "no-found-related": "لم يتم العثور على %{link} ذي صلة للتعليق",
+  "please-contact": "يرجى الاتصال بـ %{user} لتهيئة التعليق",
+  "init-issue": "إنشاء المشكلة",
+  "leave-a-comment": "اترك تعليقًا",
+  "preview": "معاينة",
+  "edit": "تعديل",
+  "comment": "تعليق",
+  "support-markdown": "يدعم Markdown",
+  "login-with-github": "تسجيل الدخول عبر GitHub",
+  "first-comment-person": "كن أول من يترك تعليقًا!",
+  "commented": "علق",
+  "load-more": "تحميل المزيد",
+  "counts": "%{counts} تعليق |||| %{counts} تعليقات",
+  "sort-asc": "الترتيب من الأقدم",
+  "sort-desc": "الترتيب من الأحدث",
+  "logout": "تسجيل الخروج",
+  "anonymous": "مجهول"
+}
