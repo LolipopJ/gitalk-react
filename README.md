@@ -19,14 +19,6 @@ Developed for modern browsers, focusing on reducing build size and enhancing dev
   - `id`: Gitalk uses `location.href` as the default value, while Gitalk React uses `location.host + location.pathname` as the default value, to avoid unexpected search parameters.
   - `defaultAuthor`: Can still be used. Gitalk React has added a new parameter `defaultUser` to set the default user for comments, keeping the field naming consistent with the GitHub API.
 
-## Features in Development
-
-- [ ] Feature: Support editing comments published by the user in Gitalk React.
-- [x] Feature: Support collapse overly long comments, allowing users to click to expand the comment.
-- [ ] refactor: Gradually remove dependencies on non-essential third-party libraries to reduce build size.
-- [ ] test: Add automated testing processes to enhance project robustness.
-- [x] chore: Deploy [preview environment](https://lolipopj.github.io/gitalk-react/).
-
 ## Quick Start
 
 ### Installation
@@ -181,6 +173,10 @@ The default user used when the comment user does not exist.
 
 When the height of the comment exceeds `${collapsedHeight}px`, it will automatically collapse to `${collapsedHeight}px`.
 
+### highlightAdminComment `boolean = true`
+
+Whether to highlight comments published by administrators, which have additional shadow effects.
+
 ### updateCountCallback `(count: number) => void`
 
 Callback method invoked when updating the number of comments.
@@ -286,6 +282,14 @@ Bundle and build components:
 ```bash
 yarn build
 ```
+
+## Features under Development
+
+- [ ] Feature: Support editing comments published by the user in Gitalk React.
+- [x] Feature: Support collapse overly long comments, allowing users to click to expand the comment.
+- [ ] refactor: Gradually remove dependencies on non-essential third-party libraries to reduce build size.
+- [ ] test: Add automated testing processes to enhance project robustness.
+- [x] chore: Deploy [preview environment](https://lolipopj.github.io/gitalk-react/).
 
 ## License
 

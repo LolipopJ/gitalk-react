@@ -19,14 +19,6 @@
   - `id`：Gitalk 使用 `location.href` 作为默认值，Gitalk React 使用 `location.host + location.pathname` 作为默认值，避免预期外的查询参数。
   - `defaultAuthor`：仍然可以使用。Gitalk React 新增了参数项 `defaultUser` 来设置评论的默认用户，保持字段命名与 Github API 一致。
 
-## 开发中的功能
-
-- [ ] Feature: 支持在 Gitalk React 编辑自己发表的评论。
-- [x] Feature: 支持折叠过长的评论，允许点击展开该评论。
-- [ ] refactor: 逐渐移除对非必要三方库的依赖。减少构建包的体积。
-- [ ] test: 添加自动化测试流程。提升项目的健壮性。
-- [x] chore: 部署[预览环境](https://lolipopj.github.io/gitalk-react/)。
-
 ## 快速开始
 
 ### 安装
@@ -181,6 +173,10 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 
 当评论的高度大于 `${collapsedHeight}px` 时，自动折叠到 `${collapsedHeight}px`。
 
+### highlightAdminComment `boolean = true`
+
+是否高亮管理员发表的评论，高亮的评论具有额外的阴影效果。
+
 ### updateCountCallback `(count: number) => void`
 
 评论数量更新的调用的回调方法。
@@ -286,6 +282,13 @@ yarn lint
 ```bash
 yarn build
 ```
+
+## 开发中的功能
+
+- [ ] Feature: 支持在 Gitalk React 编辑自己发表的评论。
+- [x] Feature: 支持折叠过长的评论，允许点击展开该评论。
+- [ ] test: 添加自动化测试流程。提升项目的健壮性。
+- [x] chore: 部署[预览环境](https://lolipopj.github.io/gitalk-react/)。
 
 ## 许可证
 
