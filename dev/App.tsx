@@ -425,8 +425,15 @@ const App = () => {
             }}
           >
             <span>
-              Existed issues in repository {GITALK_BASE_OPTIONS.owner}/
-              {GITALK_BASE_OPTIONS.repo}:
+              Existed issues in repository{" "}
+              <a
+                href={`https://github.com/${GITALK_BASE_OPTIONS.owner}/${GITALK_BASE_OPTIONS.repo}/issues`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {GITALK_BASE_OPTIONS.owner}/{GITALK_BASE_OPTIONS.repo}
+              </a>
+              :
             </span>
             {issues.length
               ? issues.map((issue) => {
