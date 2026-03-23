@@ -1,10 +1,9 @@
 import React from "react";
 
-export interface SVGProps
-  extends React.DetailedHTMLProps<
-    React.HTMLAttributes<HTMLSpanElement>,
-    HTMLSpanElement
-  > {
+export interface SVGProps extends React.DetailedHTMLProps<
+  React.HTMLAttributes<HTMLSpanElement>,
+  HTMLSpanElement
+> {
   icon: string;
   text?: string;
 }

@@ -4,14 +4,10 @@ import type FlipMove from "react-flip-move";
 import type { Lang } from "../i18n";
 import type { IssueCommentsQLResponse } from "../services/graphql/comment";
 
-export interface GitalkProps
-  extends Omit<
-    React.DetailedHTMLProps<
-      React.HTMLAttributes<HTMLDivElement>,
-      HTMLDivElement
-    >,
-    "id" | "title"
-  > {
+export interface GitalkProps extends Omit<
+  React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>,
+  "id" | "title"
+> {
   /**
    * GitHub Application Client ID.
    */

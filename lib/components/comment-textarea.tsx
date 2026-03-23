@@ -10,11 +10,10 @@ import Avatar from "./avatar";
 import Button from "./button";
 import Svg from "./svg";
 
-interface CommentTextareaProps
-  extends React.DetailedHTMLProps<
-    React.TextareaHTMLAttributes<HTMLTextAreaElement>,
-    HTMLTextAreaElement
-  > {
+interface CommentTextareaProps extends React.DetailedHTMLProps<
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+  HTMLTextAreaElement
+> {
   value: string;
   octokit: Octokit;
   user?: User;
@@ -42,6 +41,7 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
     const [isPreviewComment, setIsPreviewComment] = useState<boolean>(false);
 
     const prevInputCommentRef = useRef<string>();
+    const prevCommentHtmlRef = useRef<string>("");
 
     const {
       data: commentHtml = "",
@@ -49,7 +49,8 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
       run: runGetCommentHtml,
     } = useRequest(
       async (): Promise<string> => {
-        if (prevInputCommentRef.current === inputComment) return commentHtml;
+        if (prevInputCommentRef.current === inputComment)
+          return prevCommentHtmlRef.current;
 
         const getPreviewedHtmlRes = await octokit.request("POST /markdown", {
           text: inputComment,
@@ -59,6 +60,7 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
           prevInputCommentRef.current = inputComment;
 
           const _commentHtml = getPreviewedHtmlRes.data;
+          prevCommentHtmlRef.current = _commentHtml;
           return _commentHtml;
         } else {
           onPreviewError(getPreviewedHtmlRes);

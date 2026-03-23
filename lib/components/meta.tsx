@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useState } from "react";
+import React, { useContext, useState } from "react";
 
 import ArrowDown from "../assets/arrow-down.svg?raw";
 import { HOMEPAGE, VERSION } from "../constants";
@@ -35,14 +35,14 @@ const Meta: React.FC<MetaProps> = (props) => {
 
   const [showPopup, setShowPopup] = useState<boolean>(false);
 
-  const hidePopup = useCallback((e: MouseEvent) => {
+  function hidePopup(e: MouseEvent) {
     const target = e.target as HTMLElement;
     if (target && hasClassInParent(target, "gt-user", "gt-popup")) {
       return;
     }
     document.removeEventListener("click", hidePopup);
     setShowPopup(false);
-  }, []);
+  }
 
   const onShowOrHidePopup: React.MouseEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();

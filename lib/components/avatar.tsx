@@ -2,11 +2,10 @@ import React, { useState } from "react";
 
 import { DEFAULT_AVATAR } from "../constants";
 
-export interface AvatarProps
-  extends React.DetailedHTMLProps<
-    React.AnchorHTMLAttributes<HTMLAnchorElement>,
-    HTMLAnchorElement
-  > {
+export interface AvatarProps extends React.DetailedHTMLProps<
+  React.AnchorHTMLAttributes<HTMLAnchorElement>,
+  HTMLAnchorElement
+> {
   src?: string;
   alt?: string;
   defaultSrc?: string;

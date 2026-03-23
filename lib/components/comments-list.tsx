@@ -6,11 +6,10 @@ import type { Comment as CommentType, GitalkProps, User } from "../interfaces";
 import Button from "./button";
 import Comment, { type CommentProps } from "./comment";
 
-interface CommentWithForwardedRefProps
-  extends Pick<
-    CommentProps,
-    "comment" | "onReply" | "likeLoading" | "collapsedHeight"
-  > {
+interface CommentWithForwardedRefProps extends Pick<
+  CommentProps,
+  "comment" | "onReply" | "likeLoading" | "collapsedHeight"
+> {
   onLike: (like: boolean, commentId: number, heartReactionId?: number) => void;
   user?: User;
   admin: GitalkProps["admin"];
@@ -55,7 +54,8 @@ const CommentWithForwardedRef = forwardRef<
 });
 
 interface CommentsListProps
-  extends Pick<GitalkProps, "flipMoveOptions">,
+  extends
+    Pick<GitalkProps, "flipMoveOptions">,
     Omit<CommentWithForwardedRefProps, "comment"> {
   comments: CommentType[];
   commentsCount: number;

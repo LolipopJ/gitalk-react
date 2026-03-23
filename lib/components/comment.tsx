@@ -1,5 +1,12 @@
 import { formatDistanceToNow, parseISO } from "date-fns";
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import ArrowDown from "../assets/arrow-down.svg?raw";
 import Edit from "../assets/edit.svg?raw";
@@ -11,11 +18,10 @@ import type { Comment as CommentType, GitalkProps } from "../interfaces";
 import Avatar from "./avatar";
 import Svg from "./svg";
 
-export interface CommentProps
-  extends React.DetailedHTMLProps<
-    React.HTMLAttributes<HTMLDivElement>,
-    HTMLDivElement
-  > {
+export interface CommentProps extends React.DetailedHTMLProps<
+  React.HTMLAttributes<HTMLDivElement>,
+  HTMLDivElement
+> {
   comment: CommentType;
   isAuthor: boolean;
   isAdmin: boolean;
@@ -77,12 +83,13 @@ const Comment: React.FC<CommentProps> = ({
     return () => {};
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const commentElement = ref.current;
 
     if (commentElement && collapsedHeight) {
       const commentElementHeight = commentElement.clientHeight;
       if (commentElementHeight > collapsedHeight) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCollapsed(true);
       }
     }
