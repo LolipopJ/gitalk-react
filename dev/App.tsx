@@ -403,6 +403,23 @@ const App = () => {
               />
             </div>
             <div>
+              <label htmlFor="highlightAdminComment">
+                Highlight admin comments
+              </label>
+              <input
+                type="checkbox"
+                name="highlightAdminComment"
+                defaultChecked={options.highlightAdminComment ?? true}
+                onChange={(e) => {
+                  e.persist();
+                  setOptions((prev) => ({
+                    ...prev,
+                    highlightAdminComment: Boolean(e.target.checked),
+                  }));
+                }}
+              />
+            </div>
+            <div>
               <button
                 className="small"
                 style={{ marginRight: 8 }}

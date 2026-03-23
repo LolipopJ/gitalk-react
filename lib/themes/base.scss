@@ -592,12 +592,14 @@ $gt-breakpoint-mobile: 480px;
       }
 
       &-admin {
-        .gt-comment-content {
-          box-shadow: 0 em(2px) em(12px) 0 var(--gt-color-comment-shadow);
+        &--highlight {
+          .gt-comment-content {
+            box-shadow: 0 em(2px) em(12px) 0 var(--gt-color-comment-shadow);
 
-          &:hover {
-            box-shadow: 0 em(2px) em(24px) 0
-              var(--gt-color-comment-shadow-admin);
+            &:hover {
+              box-shadow: 0 em(2px) em(24px) 0
+                var(--gt-color-comment-shadow-admin);
+            }
           }
         }
       }

@@ -1,3 +1,4 @@
+import cn from "classnames";
 import React, { useContext, useState } from "react";
 
 import ArrowDown from "../assets/arrow-down.svg?raw";
@@ -8,11 +9,10 @@ import { hasClassInParent } from "../utils/dom";
 import Action from "./action";
 import Svg from "./svg";
 
-interface MetaProps {
+interface MetaProps extends Pick<GitalkProps, "pagerDirection"> {
   issue?: Issue;
   user?: User;
   commentsCount: number;
-  pagerDirection: GitalkProps["pagerDirection"];
   onPagerDirectionChange: (
     direction: NonNullable<GitalkProps["pagerDirection"]>,
   ) => void;
@@ -75,13 +75,17 @@ const Meta: React.FC<MetaProps> = (props) => {
             ? [
                 <Action
                   key="sort-asc"
-                  className={`gt-action-sortasc${pagerDirection === "first" ? " is--active" : ""}`}
+                  className={cn("gt-action-sortasc", {
+                    "is--active": pagerDirection === "first",
+                  })}
                   onClick={() => onPagerDirectionChange("first")}
                   text={polyglot.t("sort-asc")}
                 />,
                 <Action
                   key="sort-desc"
-                  className={`gt-action-sortdesc${pagerDirection === "last" ? " is--active" : ""}`}
+                  className={cn("gt-action-sortdesc", {
+                    "is--active": pagerDirection === "last",
+                  })}
                   onClick={() => onPagerDirectionChange("last")}
                   text={polyglot.t("sort-desc")}
                 />,
@@ -113,7 +117,7 @@ const Meta: React.FC<MetaProps> = (props) => {
       )}
       <div className="gt-user">
         <div
-          className={`gt-user-inner${showPopup ? " is--poping" : ""}`}
+          className={cn("gt-user-inner", { "is--poping": showPopup })}
           onClick={onShowOrHidePopup}
         >
           <span className="gt-user-name">

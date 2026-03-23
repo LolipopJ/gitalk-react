@@ -1,3 +1,4 @@
+import cn from "classnames";
 import React, { useState } from "react";
 
 import { DEFAULT_AVATAR } from "../constants";
@@ -22,7 +23,7 @@ const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <a
-      className={`gt-avatar ${className}`}
+      className={cn("gt-avatar", className)}
       target="_blank"
       rel="noopener noreferrer"
       {...restProps}

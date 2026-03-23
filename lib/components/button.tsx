@@ -1,3 +1,4 @@
+import cn from "classnames";
 import React from "react";
 
 export interface ButtonProps extends React.DetailedHTMLProps<
@@ -20,7 +21,7 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
-      className={`gt-btn ${className}`}
+      className={cn("gt-btn", className)}
       style={{ cursor: disabled ? "not-allowed" : undefined, ...style }}
       disabled={disabled}
       {...restProps}

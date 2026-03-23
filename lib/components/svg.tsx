@@ -1,3 +1,4 @@
+import cn from "classnames";
 import React from "react";
 
 export interface SVGProps extends React.DetailedHTMLProps<
@@ -14,7 +15,7 @@ const Svg: React.FC<SVGProps> = ({
   className = "",
   ...restProps
 }) => (
-  <span className={`gt-ico ${className}`} {...restProps}>
+  <span className={cn("gt-ico", className)} {...restProps}>
     <span
       className="gt-svg"
       dangerouslySetInnerHTML={{

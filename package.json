@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "ahooks": "^3.0.0",
+    "classnames": "^2.0.0",
     "date-fns": "^4.0.0",
     "node-polyglot": "^2.0.0",
     "octokit": "^5.0.0",

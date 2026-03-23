@@ -143,6 +143,12 @@ export interface GitalkProps extends Omit<
    */
   collapsedHeight?: number;
   /**
+   * Whether to highlight the comment created by admin users.
+   *
+   * @default true
+   */
+  highlightAdminComment?: boolean;
+  /**
    * Callback method invoked when updating the number of comments.
    *
    * @param count comments number

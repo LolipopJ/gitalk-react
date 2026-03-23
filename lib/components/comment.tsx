@@ -1,3 +1,4 @@
+import cn from "classnames";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import React, {
   useContext,
@@ -18,17 +19,19 @@ import type { Comment as CommentType, GitalkProps } from "../interfaces";
 import Avatar from "./avatar";
 import Svg from "./svg";
 
-export interface CommentProps extends React.DetailedHTMLProps<
-  React.HTMLAttributes<HTMLDivElement>,
-  HTMLDivElement
-> {
+export interface CommentProps
+  extends
+    React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLDivElement>,
+      HTMLDivElement
+    >,
+    Pick<GitalkProps, "collapsedHeight" | "highlightAdminComment"> {
   comment: CommentType;
   isAuthor: boolean;
   isAdmin: boolean;
   onReply: (comment: CommentType) => void;
   onLike: (like: boolean, comment: CommentType) => void;
   likeLoading: boolean;
-  collapsedHeight?: GitalkProps["collapsedHeight"];
 }
 
 const Comment: React.FC<CommentProps> = ({
@@ -39,6 +42,7 @@ const Comment: React.FC<CommentProps> = ({
   onLike,
   likeLoading,
   collapsedHeight,
+  highlightAdminComment,
   className = "",
   ...restProps
 }) => {
@@ -98,7 +102,14 @@ const Comment: React.FC<CommentProps> = ({
   return (
     <div
       ref={ref}
-      className={`gt-comment ${isAdmin ? "gt-comment-admin" : ""} ${className}`}
+      className={cn(
+        "gt-comment",
+        {
+          "gt-comment-admin": isAdmin,
+          "gt-comment-admin--highlight": isAdmin && highlightAdminComment,
+        },
+        className,
+      )}
       {...restProps}
     >
       <Avatar

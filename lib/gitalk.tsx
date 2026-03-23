@@ -1,6 +1,7 @@
 import "./i18n";
 
 import { useRequest } from "ahooks";
+import cn from "classnames";
 import React, {
   useCallback,
   useEffect,
@@ -69,6 +70,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     defaultUser: propsDefaultUser,
     defaultAuthor: propsDefaultAuthor,
     collapsedHeight: propsCollapsedHeight,
+    highlightAdminComment = true,
     updateCountCallback,
     onCreateIssue,
     onCreateComment,
@@ -775,7 +777,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   return (
     <I18nContext.Provider value={i18nContextValue}>
       <div
-        className={`gt-container${isInputFocused ? " gt-input-focused" : ""} ${className}`}
+        className={cn(
+          "gt-container",
+          { "gt-input-focused": isInputFocused },
+          className,
+        )}
         {...restProps}
       >
         {/* Alert */}
@@ -830,6 +836,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
                 onLike={runLikeOrDislikeComment}
                 likeLoading={likeOrDislikeCommentLoading}
                 collapsedHeight={collapsedHeight}
+                highlightAdminComment={highlightAdminComment}
               />
             </>
           ) : (

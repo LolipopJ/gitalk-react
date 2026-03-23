@@ -6,13 +6,19 @@ import type { Comment as CommentType, GitalkProps, User } from "../interfaces";
 import Button from "./button";
 import Comment, { type CommentProps } from "./comment";
 
-interface CommentWithForwardedRefProps extends Pick<
-  CommentProps,
-  "comment" | "onReply" | "likeLoading" | "collapsedHeight"
-> {
+interface CommentWithForwardedRefProps
+  extends
+    Pick<
+      CommentProps,
+      | "comment"
+      | "onReply"
+      | "likeLoading"
+      | "collapsedHeight"
+      | "highlightAdminComment"
+    >,
+    Pick<GitalkProps, "admin"> {
   onLike: (like: boolean, commentId: number, heartReactionId?: number) => void;
   user?: User;
-  admin: GitalkProps["admin"];
 }
 
 // Why forwardRef? https://www.npmjs.com/package/react-flip-move#usage-with-functional-components

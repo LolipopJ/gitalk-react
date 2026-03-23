@@ -1,3 +1,4 @@
+import cn from "classnames";
 import React from "react";
 
 export interface ActionProps extends React.DetailedHTMLProps<
@@ -12,7 +13,7 @@ const Action: React.FC<ActionProps> = ({
   className = "",
   ...restProps
 }) => (
-  <a className={`gt-action ${className}`} {...restProps}>
+  <a className={cn("gt-action", className)} {...restProps}>
     <span className="gt-action-text">{text}</span>
   </a>
 );
