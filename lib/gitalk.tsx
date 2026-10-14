@@ -20,7 +20,6 @@ import {
   DATE_FNS_LOCALE_MAP,
   DEFAULT_FLIP_MOVE_OPTIONS,
   DEFAULT_LABELS,
-  DEFAULT_PROXY,
   DEFAULT_USER,
 } from "./constants";
 import I18nContext, { type I18nContextValue } from "./contexts/I18nContext";
@@ -66,7 +65,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     enableHotKey = true,
     distractionFreeMode = false,
     flipMoveOptions = DEFAULT_FLIP_MOVE_OPTIONS,
-    proxy = DEFAULT_PROXY,
+    proxy,
     defaultUser: propsDefaultUser,
     defaultAuthor: propsDefaultAuthor,
     collapsedHeight: propsCollapsedHeight,
@@ -141,13 +140,13 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     run: runGetAccessToken,
   } = useRequest(
     async (code: string) =>
-      await getAccessToken({ url: proxy, code, clientID, clientSecret }),
+      await getAccessToken({ proxy, code, clientID, clientSecret }),
     {
       manual: true,
-      ready: !!proxy && !!clientID && !!clientSecret,
+      ready: !!clientID && !!(clientSecret || proxy),
       onSuccess: (data) => {
         localStorage.setItem(ACCESS_TOKEN_KEY, data);
-        logger.s(`Get access token successfully:`, data);
+        logger.s(`Get access token successfully`);
       },
       onError: (error) => {
         setAlert(`An error occurred while getting access token: ${error}`);
@@ -757,9 +756,9 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     return null;
   }
 
-  if (!(clientID && clientSecret)) {
+  if (!clientID || !(clientSecret || proxy)) {
     logger.e(
-      `You must specify the \`clientId\` and \`clientSecret\` of Github APP`,
+      `You must specify \`clientID\` and either \`proxy\` or \`clientSecret\``,
     );
     return null;
   }

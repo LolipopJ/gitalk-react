@@ -1,3 +1,4 @@
+import { DEFAULT_PROXY } from "../constants";
 import { stringifySearchQuery } from "../utils/query";
 
 export const getAuthorizeUrl = (clientID: string) => {
@@ -10,31 +11,53 @@ export const getAuthorizeUrl = (clientID: string) => {
 };
 
 export const getAccessToken = async ({
-  url,
+  proxy,
   code,
   clientID,
   clientSecret,
 }: {
-  url: string;
+  proxy?: string;
   code: string;
   clientID: string;
-  clientSecret: string;
+  clientSecret?: string;
 }) => {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      code,
-      client_id: clientID,
-      client_secret: clientSecret,
-    }),
-  });
+  let res: Response;
+  if (!clientSecret) {
+    if (!proxy)
+      throw new Error(
+        "Specify an OAuth `proxy` when `clientSecret` is omitted",
+      );
+    const url = new URL(proxy, window.location.href);
+    url.searchParams.set("code", code);
+    res = await fetch(url.toString(), {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+      referrerPolicy: "no-referrer",
+    });
+  } else {
+    res = await fetch(proxy || DEFAULT_PROXY, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        code,
+        client_id: clientID,
+        client_secret: clientSecret,
+      }),
+    });
+  }
 
+  if (!res.ok) throw new Error("OAuth token exchange failed");
   const resData = await res.json();
-  const { access_token } = resData;
+  if (
+    resData?.error ||
+    typeof resData?.access_token !== "string" ||
+    !resData.access_token
+  ) {
+    throw new Error("OAuth response did not contain an access token");
+  }
 
-  return access_token as string;
+  return resData.access_token as string;
 };

@@ -7,10 +7,17 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-out
+# Environment
+.env
+
+# NPM
+node_modules/
+
+# Production
+dist/
+dist-ssr/
+docs/
+out/
 *.local
 
 # Editor directories and files
@@ -26,3 +33,6 @@ out
 
 # Generated analyze file by rollup-plugin-visualizer
 stats.html
+
+# AI
+.serena/

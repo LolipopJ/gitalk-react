@@ -14,8 +14,10 @@ export interface GitalkProps extends Omit<
   clientID: string;
   /**
    * GitHub Application Client Secret.
+   * When provided, exchange credentials through the selected CORS proxy.
+   * Exposed in browser code; omit it to use a server-side `proxy`.
    */
-  clientSecret: string;
+  clientSecret?: string;
   /**
    * GitHub repository owner.
    * Can be personal user or organization.
@@ -114,10 +116,10 @@ export interface GitalkProps extends Omit<
    */
   flipMoveOptions?: FlipMove.FlipMoveProps;
   /**
-   * GitHub oauth request reverse proxy for CORS.
-   * [Why need this?](https://github.com/isaacs/github/issues/330)
-   *
-   * @default "https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token"
+   * With `clientSecret`: optional CORS relay, defaulting to `https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token`.
+   * Without `clientSecret`: required server-side OAuth exchange endpoint.
+   * Server-side mode receives GET requests with only `code` and returns
+   * `{ access_token: string }`; credentials stay on the server.
    */
   proxy?: string;
   /**

@@ -44,8 +44,8 @@ Gitalk React relies on GitHub OAuth App for login authentication; you need to fi
 
 When using the Gitalk React component, fill in the necessary configuration items:
 
-- `clientId`: The ID of your GitHub OAuth App.
-- `clientSecret`: The Secret key of your GitHub OAuth App.
+- `clientID`: The ID of your GitHub OAuth App.
+- `proxy`: Your server-side OAuth exchange endpoint. See [Proxy Deployment](#proxy-deployment).
 - `owner`: Your GitHub username.
 - `repo`: The name of your GitHub repository. It must be a public repository.
 - `admin`: A list of Gitalk React administrators; only those listed can initialize comment topics. This can include the owner and collaborators of the GitHub repository.
@@ -53,7 +53,30 @@ When using the Gitalk React component, fill in the necessary configuration items
 ```tsx
 <Gitalk
   clientID="YOUR_GITHUB_OAUTH_APP_CLIENT_ID"
-  clientSecret="YOUR_GITHUB_OAUTH_APP_CLIENT_SECRET"
+  proxy="https://your-server.com/oauth/access_token"
+  owner="GITHUB_REPO_OWNER"
+  repo="GITHUB_REPO_NAME"
+  admin={['GITHUB_REPO_OWNER', 'GITHUB_REPO_COLLABORATOR']}
+/>
+```
+
+> [!CAUTION]
+> Keep your OAuth App secret on the server. Browser code and `VITE_*` environment variables are public. Rotate the secrets previously included in the preview source in your GitHub OAuth App settings; removing them from the current source does not remove published assets or Git history.
+>
+> Providing `clientSecret` selects the client-side exchange mode, using your chosen CORS relay or the default relay when `proxy` is omitted. That mode exposes the secret to visitors and the relay. For server-side exchange, omit `clientSecret` and provide your backend `proxy`.
+
+For a secure deployment with your backend proxy server, use the following configuration items:
+
+- `clientID`: The ID of your GitHub OAuth App.
+- `proxy`: The URL endpoint of your backend proxy server which securely handles the OAuth authorization code-to-token exchange.
+- `owner`: Your GitHub username.
+- `repo`: The name of your GitHub repository. It must be a public repository.
+- `admin`: A list of Gitalk React administrators; only those listed can initialize comment topics. This can include the owner and collaborators of the GitHub repository.
+
+```tsx
+<Gitalk
+  clientID="YOUR_GITHUB_OAUTH_APP_CLIENT_ID"
+  proxy="https://your-server.com/oauth/access_token"
   owner="GITHUB_REPO_OWNER"
   repo="GITHUB_REPO_NAME"
   admin={['GITHUB_REPO_OWNER', 'GITHUB_REPO_COLLABORATOR']}
@@ -68,7 +91,9 @@ When using the Gitalk React component, fill in the necessary configuration items
 
 ### clientSecret `string`
 
-**Required**. The Secret key of your GitHub OAuth App.
+The Secret key of your GitHub OAuth App. When provided, Gitalk sends the authorization code, client ID and secret in a POST request through `proxy`, using `DEFAULT_PROXY` when `proxy` is omitted or empty. This mode exposes the secret in the browser and to the CORS relay.
+
+You should keep your OAuth App secret on the server. Omit `clientSecret` and provide a server-side `proxy` for secure deployments.
 
 ### owner `string`
 
@@ -151,9 +176,11 @@ Default values (referenced effects can be found [here](https://github.com/joshwc
 }
 ```
 
-### proxy `string = "https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token"`
+### proxy `string`
 
-Reverse proxy for authenticating with Github OAuth App that supports CORS. [Why needed?](https://github.com/isaacs/github/issues/330)
+When `clientSecret` is provided, this is an optional CORS relay URL. It defaults to `https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token`. You can select another CORS service. Gitalk sends a POST request containing the code, client ID and secret; the relay solves the browser's cross-origin restriction while GitHub still validates the OAuth credentials.
+
+When `clientSecret` is omitted, `proxy` is required and must point to your server-side OAuth exchange endpoint. Gitalk sends a GET request with only the authorization code as an encoded `code` query parameter, preserving existing query parameters. The server stores the credentials and returns JSON `{ "access_token": "..." }`. A failed exchange does not switch modes.
 
 ### defaultUser `{ avatar_url: string; login: string; html_url: string }`
 
@@ -247,13 +274,25 @@ When importing dark theme with `import 'gitalk-react/gitalk-dark.css'`, the defa
 }
 ```
 
+## Proxy Deployment
+
+The [included Node proxy](./proxy-server/README.md) requires Node.js 22 or newer and no additional packages. Copy `proxy-server/.env.example` to `proxy-server/.env.local`, then set `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and `ALLOWED_ORIGIN` on the server. The origin must match your site origin exactly, without a path or trailing slash.
+
+```bash
+npm run start:proxy
+```
+
+Use `http://localhost:3000/oauth/access_token` locally. In production, put the proxy behind HTTPS and set the component's `proxy` to its public endpoint. Disable query-string logging and caching for this endpoint, since its URL contains a one-time authorization code. The browser `clientID` must match the server's OAuth App.
+
+The preview uses this server-side mode exclusively. Local Vite development forwards `/oauth/access_token` to the local proxy. For a static preview deployment, set `VITE_PROXY` to a deployed HTTPS endpoint before building; GitHub Pages cannot host the Node proxy.
+
 ## Developer
 
 Create a `.env.local` file in your project's root directory and add development environment variables as follows:
 
 ```bash
 VITE_CLIENT_ID="YOUR_GITHUB_OAUTH_APP_CLIENT_ID"
-VITE_CLIENT_SECRET="YOUR_GITHUB_OAUTH_APP_CLIENT_SECRET"
+VITE_PROXY="http://localhost:3000/oauth/access_token"
 VITE_REPO_OWNER="YOUR_GITHUB_USERNAME"
 VITE_REPO_NAME="YOUR_REPO_NAME"
 VITE_ADMIN='["YOUR_GITHUB_USERNAME"]'
@@ -261,10 +300,22 @@ VITE_ADMIN='["YOUR_GITHUB_USERNAME"]'
 
 ### Development
 
+Install dependencies:
+
+```bash
+yarn
+```
+
 Debug in your browser during development:
 
 ```bash
 yarn dev
+```
+
+Run test:
+
+```bash
+yarn test
 ```
 
 ### Lint

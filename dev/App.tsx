@@ -41,9 +41,16 @@ const GITALK_BASE_OPTIONS: GitalkProps = import.meta.env.PROD
     }
   : {
       clientID: import.meta.env["VITE_CLIENT_ID"] ?? "Ov23lieS9XRg4Axl4x6P",
-      clientSecret:
-        import.meta.env["VITE_CLIENT_SECRET"] ??
-        "754ba9d5432e289457daad3f49fb88a87e3ca266",
+      ...(import.meta.env["VITE_PROXY"]
+        ? {
+            // /oauth/access_token
+            proxy: import.meta.env["VITE_PROXY"],
+          }
+        : {
+            clientSecret:
+              import.meta.env["VITE_CLIENT_SECRET"] ??
+              "754ba9d5432e289457daad3f49fb88a87e3ca266",
+          }),
       owner: import.meta.env["VITE_REPO_OWNER"] ?? "LolipopJ",
       repo: import.meta.env["VITE_REPO_NAME"] ?? "gitalk-react",
       admin: import.meta.env["VITE_ADMIN"]
@@ -53,7 +60,7 @@ const GITALK_BASE_OPTIONS: GitalkProps = import.meta.env.PROD
 
 type GitalkEditableProps = Omit<
   GitalkProps,
-  "clientID" | "clientSecret" | "owner" | "repo" | "admin" | "number"
+  "clientID" | "clientSecret" | "proxy" | "owner" | "repo" | "admin" | "number"
 >;
 const DEFAULT_EDITABLE_OPTIONS: GitalkEditableProps = {};
 

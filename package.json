@@ -15,8 +15,9 @@
   "license": "MIT",
   "type": "module",
   "files": [
-    "dist",
-    "lib",
+    "dist/",
+    "lib/",
+    "proxy-server/",
     "LICENSE",
     "package.json",
     "README-zh-CN.md",
@@ -38,14 +39,18 @@
   "types": "./dist/gitalk.d.ts",
   "scripts": {
     "dev": "vite --config vite.config.preview.ts",
-    "build": "npm run build:lib && npm run build:preview",
-    "build:lib": "npm run build:ts && npm run build:scss",
+    "build": "yarn build:lib && yarn build:preview",
+    "build:lib": "yarn build:ts && yarn build:scss",
     "build:ts": "tsc -b && vite build",
     "build:scss": "vite build --config vite.config.scss.ts",
     "build:preview": "vite build --config vite.config.preview.ts",
-    "lint": "npm run lint:ts && npm run lint:scss",
+    "lint": "yarn lint:ts && yarn lint:scss",
     "lint:ts": "eslint . --fix",
-    "lint:scss": "stylelint **/*.scss --fix"
+    "lint:scss": "stylelint **/*.scss --fix",
+    "start:proxy": "node --env-file=proxy-server/.env.local proxy-server/server.mjs",
+    "test": "yarn test:oauth && yarn test:preview",
+    "test:oauth": "node --test test/oauth.test.mjs proxy-server/server.test.mjs",
+    "test:preview": "node --test test/preview.test.mjs"
   },
   "dependencies": {
     "ahooks": "^3.0.0",

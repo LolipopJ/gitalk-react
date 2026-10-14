@@ -5,5 +5,10 @@ import { defineConfig } from "vite";
 export default defineConfig({
   base: "/gitalk-react/",
   build: { outDir: "out" },
+  server: {
+    proxy: {
+      "/oauth/access_token": "http://127.0.0.1:3000",
+    },
+  },
   plugins: [react()],
 });
