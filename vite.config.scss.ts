@@ -6,8 +6,14 @@ export default defineConfig({
     emptyOutDir: false,
     rollupOptions: {
       input: {
-        "gitalk-dark": resolve(__dirname, "lib/themes/gitalk-dark.scss"),
-        "gitalk-light": resolve(__dirname, "lib/themes/gitalk-light.scss"),
+        "gitalk-dark": resolve(
+          import.meta.dirname,
+          "lib/themes/gitalk-dark.scss",
+        ),
+        "gitalk-light": resolve(
+          import.meta.dirname,
+          "lib/themes/gitalk-light.scss",
+        ),
       },
       output: {
         assetFileNames: "[name][extname]",

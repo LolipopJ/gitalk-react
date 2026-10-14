@@ -253,6 +253,7 @@ const loadGitalk = () => {
     require: (path) => {
       if (path === "react")
         return {
+          __esModule: true,
           ...hooks,
           default: {
             createElement: (type, props, ...children) => ({
@@ -269,18 +270,21 @@ const loadGitalk = () => {
             return { loading: false, run: () => {}, mutate: () => {} };
           },
         };
-      if (path === "classnames") return { default: () => "gt-container" };
+      if (path === "classnames")
+        return { __esModule: true, default: () => "gt-container" };
       if (path === "./constants")
         return {
           ACCESS_TOKEN_KEY: "GT_ACCESS_TOKEN",
           DATE_FNS_LOCALE_MAP: {},
           DEFAULT_LABELS: ["Gitalk"],
         };
-      if (path === "./i18n") return { default: () => ({ t: (key) => key }) };
+      if (path === "./i18n")
+        return { __esModule: true, default: () => ({ t: (key) => key }) };
       if (path === "./utils/compatibility")
         return { supportsCSSVariables: () => true, supportsES2020: () => true };
       if (path === "./utils/logger")
         return {
+          __esModule: true,
           default: {
             s: (...args) => logs.push(args),
             e: (...args) => logs.push(args),
@@ -294,10 +298,11 @@ const loadGitalk = () => {
             return "component-token";
           },
         };
-      if (path === "./services/request") return { default: () => ({}) };
+      if (path === "./services/request")
+        return { __esModule: true, default: () => ({}) };
       if (path === "./contexts/I18nContext")
-        return { default: { Provider: "provider" } };
-      return { default: () => null };
+        return { __esModule: true, default: { Provider: "provider" } };
+      return { __esModule: true, default: () => null };
     },
   });
   return { Gitalk: exports.default, requests, logs, exchanged, storage };

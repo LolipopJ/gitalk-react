@@ -17,7 +17,11 @@ interface CommentWithForwardedRefProps
       | "highlightAdminComment"
     >,
     Pick<GitalkProps, "admin"> {
-  onLike: (like: boolean, commentId: number, heartReactionId?: number) => void;
+  onLike: (
+    like: boolean,
+    commentId: CommentType["id"],
+    heartReactionId?: number,
+  ) => void;
   user?: User;
 }
 
@@ -87,7 +91,7 @@ const CommentsList: React.FC<CommentsListProps> = (props) => {
         {comments.map((comment) => (
           <CommentWithForwardedRef
             {...restCommentProps}
-            key={comment.id}
+            key={comment.id.toString()}
             comment={comment}
           />
         ))}

@@ -94,7 +94,6 @@ const Comment: React.FC<CommentProps> = ({
     if (commentElement && collapsedHeight) {
       const commentElementHeight = commentElement.clientHeight;
       if (commentElementHeight > collapsedHeight) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setCollapsed(true);
       }
     }

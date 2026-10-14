@@ -560,7 +560,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   const { loading: likeOrDislikeCommentLoading, run: runLikeOrDislikeComment } =
     useRequest(
-      async (like: boolean, commentId: number, reactionId?: number) => {
+      async (
+        like: boolean,
+        commentId: CommentType["id"],
+        reactionId?: number,
+      ) => {
         const deletedReactionId = reactionId;
         let createdReactionId: number = -1;
         if (like) {

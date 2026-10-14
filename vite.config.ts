@@ -4,13 +4,13 @@ import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
-import { peerDependencies } from "./package.json";
+import { peerDependencies } from "./package.json" with { type: "json" };
 
 // https://vite.dev/config/
 export default defineConfig({
   build: {
     lib: {
-      entry: resolve(__dirname, "lib/gitalk.tsx"),
+      entry: resolve(import.meta.dirname, "lib/gitalk.tsx"),
       name: "Gitalk",
       fileName: "gitalk",
     },
@@ -29,7 +29,7 @@ export default defineConfig({
     react(),
     dts({
       tsconfigPath: "tsconfig.lib.json",
-      rollupTypes: true,
+      bundleTypes: true,
     }),
     visualizer({
       open: true,
