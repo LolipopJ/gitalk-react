@@ -48,16 +48,17 @@ const start = async (t) => {
     });
 };
 
-test("exchange uses server credentials and returns only the token with no-cache CORS headers", async (t) => {
+test("exchange uses server credentials and preserves GitHub JSON with no-cache CORS headers", async (t) => {
   const calls = [];
   t.mock.method(globalThis, "fetch", async (...args) => {
     calls.push(args);
     return {
       ok: true,
+      status: 200,
       json: async () => ({
         access_token: "github-token",
-        client_secret: "do-not-return",
         scope: "public_repo",
+        token_type: "bearer",
       }),
     };
   });
@@ -66,7 +67,11 @@ test("exchange uses server credentials and returns only the token with no-cache 
     "/oauth/access_token?code=grant%20%26%2B&client_id=attacker&client_secret=attacker",
   );
   assert.equal(res.status, 200);
-  assert.deepEqual(JSON.parse(res.body), { access_token: "github-token" });
+  assert.deepEqual(JSON.parse(res.body), {
+    access_token: "github-token",
+    scope: "public_repo",
+    token_type: "bearer",
+  });
   assert.equal(
     res.headers["access-control-allow-origin"],
     config.allowedOrigin,
@@ -88,6 +93,7 @@ test("exchange uses server credentials and returns only the token with no-cache 
 test("same-origin and command-line callers can omit Origin", async (t) => {
   t.mock.method(globalThis, "fetch", async () => ({
     ok: true,
+    status: 200,
     json: async () => ({ access_token: "token" }),
   }));
   const call = await start(t);
@@ -140,34 +146,38 @@ test("preflight supports only GET for the allowed origin", async (t) => {
 });
 
 for (const [label, response] of [
-  ["HTTP failure", { ok: false, data: { access_token: "bad" } }],
+  ["HTTP failure", { status: 401, data: { error: "bad_credentials" } }],
   [
     "OAuth failure",
     {
-      ok: true,
+      status: 200,
       data: {
         error: "bad_verification_code",
         error_description: "sensitive details",
       },
     },
   ],
-  ["empty token", { ok: true, data: { access_token: "" } }],
-  ["non-string token", { ok: true, data: { access_token: 12 } }],
-  ["null JSON", { ok: true, data: null }],
+  ["empty token", { status: 200, data: { access_token: "" } }],
+  ["non-string token", { status: 200, data: { access_token: 12 } }],
+  ["null JSON", { status: 200, data: null }],
   [
     "OAuth error with token",
-    { ok: true, data: { error: "bad_verification_code", access_token: "bad" } },
+    {
+      status: 200,
+      data: { error: "bad_verification_code", access_token: "bad" },
+    },
   ],
 ]) {
-  test(`upstream ${label} returns a generic error`, async (t) => {
+  test(`upstream ${label} preserves GitHub status and JSON`, async (t) => {
     t.mock.method(globalThis, "fetch", async () => ({
-      ok: response.ok,
+      ok: response.status === 200,
+      status: response.status,
       json: async () => response.data,
     }));
     const call = await start(t);
     const res = await call("/oauth/access_token?code=grant");
-    assert.equal(res.status, 502);
-    assert.deepEqual(JSON.parse(res.body), { error: "oauth_exchange_failed" });
+    assert.equal(res.status, response.status);
+    assert.deepEqual(JSON.parse(res.body), response.data);
   });
 }
 
@@ -175,6 +185,19 @@ test("network failure does not reveal credentials or upstream details", async (t
   t.mock.method(globalThis, "fetch", async () => {
     throw new Error(config.clientSecret);
   });
+  const call = await start(t);
+  const res = await call("/oauth/access_token?code=grant");
+  assert.equal(res.status, 502);
+  assert.deepEqual(JSON.parse(res.body), { error: "oauth_exchange_failed" });
+});
+
+test("invalid upstream JSON returns a generic gateway error", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => ({
+    status: 200,
+    json: async () => {
+      throw new SyntaxError("invalid JSON");
+    },
+  }));
   const call = await start(t);
   const res = await call("/oauth/access_token?code=grant");
   assert.equal(res.status, 502);

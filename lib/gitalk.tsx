@@ -1,6 +1,6 @@
 import "./i18n";
 
-import { useRequest } from "ahooks";
+import { useMemoizedFn, useRequest } from "ahooks";
 import cn from "classnames";
 import React, {
   useCallback,
@@ -36,10 +36,13 @@ import {
   type IssueCommentsQLResponse,
 } from "./services/graphql/comment";
 import getOctokitInstance from "./services/request";
-import { getAccessToken, getAuthorizeUrl } from "./services/user";
+import {
+  consumeOAuthCallback,
+  getAccessToken,
+  getAuthorizeUrl,
+} from "./services/user";
 import { supportsCSSVariables, supportsES2020 } from "./utils/compatibility";
 import logger from "./utils/logger";
-import { parseSearchQuery, stringifySearchQuery } from "./utils/query";
 
 const isModernBrowser = supportsCSSVariables() && supportsES2020();
 
@@ -152,9 +155,32 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     [language, polyglot],
   );
 
+  const [accessToken, setAccessToken] = useState<string | undefined>(
+    () => localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined,
+  );
+  const clearSession = useMemoizedFn((expiredToken?: string) => {
+    if (expiredToken !== undefined && expiredToken !== accessToken) return;
+    // Keep a pending login alive when the previous API token expires.
+    if (expiredToken === undefined) cancelGetAccessToken();
+    cancelGetUser();
+    cancelCreateIssue();
+    cancelGetIssue();
+    cancelGetComments();
+    cancelCreateIssueComment();
+    cancelLikeOrDislikeComment();
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    setAccessToken(undefined);
+    clearAccessTokenResult(undefined);
+    setUser(undefined);
+    setComments([]);
+    setLocalComments([]);
+    setCommentsCursor("");
+    setCommentsPage(1);
+  });
+
   const {
-    data: accessToken = localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined,
-    mutate: setAccessToken,
+    mutate: clearAccessTokenResult,
+    cancel: cancelGetAccessToken,
     loading: getAccessTokenLoading,
     run: runGetAccessToken,
   } = useRequest(
@@ -165,6 +191,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       ready: !!clientID && !!(clientSecret || proxy),
       onSuccess: (data) => {
         localStorage.setItem(ACCESS_TOKEN_KEY, data);
+        setAccessToken(data);
         logger.s(`Get access token successfully`);
       },
       onError: (error) => {
@@ -175,23 +202,23 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   );
 
   useEffect(() => {
-    const query = parseSearchQuery();
-    const code = query["code"];
-
-    if (code && !accessToken) {
-      delete query["code"];
-      const replacedUrl = `${window.location.origin}${window.location.pathname}?${stringifySearchQuery(query)}${window.location.hash}`;
-      history.replaceState(null, "", replacedUrl);
-
-      runGetAccessToken(code);
+    try {
+      const code = consumeOAuthCallback(clientID);
+      if (code) runGetAccessToken(code);
+    } catch (error) {
+      setAlert(`An error occurred while authorizing: ${error}`);
     }
-  }, [accessToken, runGetAccessToken]);
+  }, [clientID, runGetAccessToken]);
 
-  const octokit = useMemo(() => getOctokitInstance(accessToken), [accessToken]);
+  const octokit = useMemo(
+    () => getOctokitInstance(accessToken, () => clearSession(accessToken)),
+    [accessToken, clearSession],
+  );
 
   const {
     data: user,
     mutate: setUser,
+    cancel: cancelGetUser,
     loading: getUserLoading,
   } = useRequest(
     async () => {
@@ -201,8 +228,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         logger.s(`Login successfully:`, _user);
         return _user;
       } else {
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-        setAccessToken(undefined);
+        clearSession();
         logger.e(`Get user details with access token failed:`, getUserRes);
         return undefined;
       }
@@ -332,7 +358,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     },
     {
       ready: !!owner && !!repo && (!!issueNumber || !!issueId),
-      refreshDeps: [issueScope],
+      refreshDeps: [issueScope, accessToken],
       onBefore: () => {
         setIssue(undefined);
       },
@@ -607,7 +633,14 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       clearTimeout(timer);
       cancelGetComments();
     };
-  }, [issue, user, commentsPagerDirection, cancelGetComments, runGetComments]);
+  }, [
+    accessToken,
+    issue,
+    user,
+    commentsPagerDirection,
+    cancelGetComments,
+    runGetComments,
+  ]);
 
   /** sorted all comments */
   const loadedComments = useMemo(() => {
@@ -634,109 +667,110 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     updateCountCallback?.(commentsCount);
   }, [commentsCount, updateCountCallback]);
 
-  const { loading: likeOrDislikeCommentLoading, run: runLikeOrDislikeComment } =
-    useRequest(
-      async (
-        like: boolean,
-        commentId: CommentType["id"],
-        reactionId?: number,
-      ) => {
-        const deletedReactionId = reactionId;
-        let createdReactionId: number = -1;
-        if (like) {
-          const likeCommentRes = await octokit.request(
-            "POST /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions",
+  const {
+    loading: likeOrDislikeCommentLoading,
+    run: runLikeOrDislikeComment,
+    cancel: cancelLikeOrDislikeComment,
+  } = useRequest(
+    async (
+      like: boolean,
+      commentId: CommentType["id"],
+      reactionId?: number,
+    ) => {
+      const deletedReactionId = reactionId;
+      let createdReactionId: number = -1;
+      if (like) {
+        const likeCommentRes = await octokit.request(
+          "POST /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions",
+          {
+            owner,
+            repo,
+            comment_id: commentId,
+            content: "heart",
+          },
+        );
+
+        if (likeCommentRes.status === 201) {
+          logger.s(`You like the comment!`);
+          createdReactionId = likeCommentRes.data.id;
+        } else if (likeCommentRes.status === 200) {
+          logger.i(`You already liked the comment!`);
+        } else {
+          logger.e(`Failed to like the comment.`);
+          return;
+        }
+      } else {
+        if (reactionId) {
+          const dislikeCommentRes = await octokit.request(
+            "DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions/{reaction_id}",
             {
               owner,
               repo,
               comment_id: commentId,
-              content: "heart",
+              reaction_id: reactionId,
             },
           );
 
-          if (likeCommentRes.status === 201) {
-            logger.s(`You like the comment!`);
-            createdReactionId = likeCommentRes.data.id;
-          } else if (likeCommentRes.status === 200) {
-            logger.i(`You already liked the comment!`);
+          if (dislikeCommentRes.status === 204) {
+            logger.s(`You unlike the comment.`);
           } else {
-            logger.e(`Failed to like the comment.`);
+            logger.e(`Failed to unlike the comment.`);
             return;
           }
         } else {
-          if (reactionId) {
-            const dislikeCommentRes = await octokit.request(
-              "DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions/{reaction_id}",
-              {
-                owner,
-                repo,
-                comment_id: commentId,
-                reaction_id: reactionId,
-              },
-            );
-
-            if (dislikeCommentRes.status === 204) {
-              logger.s(`You unlike the comment.`);
-            } else {
-              logger.e(`Failed to unlike the comment.`);
-              return;
-            }
-          } else {
-            logger.e("Reaction ID is not provided.");
-            return;
-          }
+          logger.e("Reaction ID is not provided.");
+          return;
         }
+      }
 
-        let isLocalComment = false;
-        let targetComment = comments.find(
+      let isLocalComment = false;
+      let targetComment = comments.find((comment) => comment.id === commentId);
+      if (!targetComment) {
+        targetComment = localComments.find(
           (comment) => comment.id === commentId,
         );
-        if (!targetComment) {
-          targetComment = localComments.find(
-            (comment) => comment.id === commentId,
-          );
-          isLocalComment = true;
-        }
-        if (targetComment) {
-          const username = (user as UserType).login;
+        isLocalComment = true;
+      }
+      if (targetComment) {
+        const username = (user as UserType).login;
 
-          const prevHeartCount = targetComment.reactions?.heart ?? 0;
-          const newHeartCount = like ? prevHeartCount + 1 : prevHeartCount - 1;
+        const prevHeartCount = targetComment.reactions?.heart ?? 0;
+        const newHeartCount = like ? prevHeartCount + 1 : prevHeartCount - 1;
 
-          const prevHeartNodes = targetComment.reactionsHeart?.nodes ?? [];
-          const newHeartNodes = like
-            ? prevHeartNodes.concat([
-                {
-                  databaseId: createdReactionId,
-                  user: {
-                    login: username,
-                  },
+        const prevHeartNodes = targetComment.reactionsHeart?.nodes ?? [];
+        const newHeartNodes = like
+          ? prevHeartNodes.concat([
+              {
+                databaseId: createdReactionId,
+                user: {
+                  login: username,
                 },
-              ])
-            : prevHeartNodes.filter(
-                (node) => node.databaseId !== deletedReactionId,
-              );
+              },
+            ])
+          : prevHeartNodes.filter(
+              (node) => node.databaseId !== deletedReactionId,
+            );
 
-          targetComment.reactions = {
-            heart: newHeartCount,
-          };
-          targetComment.reactionsHeart = {
-            totalCount: newHeartCount,
-            viewerHasReacted: like,
-            nodes: newHeartNodes,
-          };
-        }
-        if (isLocalComment) {
-          setLocalComments((prev) => [...(prev ?? [])]);
-        } else {
-          setComments((prev) => [...(prev ?? [])]);
-        }
-      },
-      {
-        manual: true,
-        ready: !!owner && !!repo && !!user,
-      },
-    );
+        targetComment.reactions = {
+          heart: newHeartCount,
+        };
+        targetComment.reactionsHeart = {
+          totalCount: newHeartCount,
+          viewerHasReacted: like,
+          nodes: newHeartNodes,
+        };
+      }
+      if (isLocalComment) {
+        setLocalComments((prev) => [...(prev ?? [])]);
+      } else {
+        setComments((prev) => [...(prev ?? [])]);
+      }
+    },
+    {
+      manual: true,
+      ready: !!owner && !!repo && !!user,
+    },
+  );
 
   const initialized = useMemo(
     () =>
@@ -758,14 +792,15 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   );
 
   const onLogin = () => {
-    const url = getAuthorizeUrl(clientID);
-    window.location.href = url;
+    try {
+      window.location.href = getAuthorizeUrl(clientID);
+    } catch (error) {
+      setAlert(`An error occurred while authorizing: ${error}`);
+    }
   };
 
   const onLogout = () => {
-    setAccessToken(undefined);
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    setUser(undefined);
+    clearSession();
   };
 
   const onCommentInputFocus: React.FocusEventHandler<HTMLTextAreaElement> = (

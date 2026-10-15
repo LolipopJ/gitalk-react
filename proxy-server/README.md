@@ -27,9 +27,9 @@ Use a process manager and an HTTPS reverse proxy. Disable caching and query-stri
 
 Requests with an `Origin` must match `ALLOWED_ORIGIN`. Requests without `Origin` are permitted for same-origin browsers and command-line clients; CORS is a browser restriction, not authentication. Only the server-configured App credentials are used, regardless of query parameters supplied by callers.
 
-The endpoint accepts `GET /oauth/access_token?code=...` and returns JSON `{ "access_token": "..." }`. Missing or duplicate codes return 400; disallowed origins return 403; unsupported paths and methods return 404/405. Invalid GitHub responses or network failures return 502 with a generic error. All responses use `Cache-Control: no-store`. Upstream requests time out after 10 seconds.
+The endpoint accepts `GET /oauth/access_token?code=...` and preserves the status and JSON body returned by `https://github.com/login/oauth/access_token`, including `scope`, `token_type`, and OAuth error fields. The browser validates this response using the same code as client-side exchange. Missing or duplicate codes return 400; disallowed origins return 403; unsupported paths and methods return 404/405. Invalid upstream JSON or network failures return 502 with a generic error. All responses use `Cache-Control: no-store`. Upstream requests time out after 10 seconds.
 
-This implementation covers audit item 1. OAuth `state` validation and token storage remain separate audit items. Rotate secrets previously published in preview source before deploying.
+For both client-side and server-side exchange, Gitalk generates a cryptographically random, one-time `state` stored in the initiating tab's `sessionStorage`, scoped to the OAuth App and valid for 10 minutes. The frontend validates and consumes it before contacting this endpoint, handles denied authorization, and removes OAuth callback parameters while preserving the page's other query parameters and hash. The proxy only exchanges codes; it does not establish a separate login session. A 401 or logout clears the browser's token and user state and cancels pending requests. Rotate secrets previously published in preview source before deploying.
 
 Run the focused tests from the repository root:
 

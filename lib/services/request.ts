@@ -1,9 +1,11 @@
 import { Octokit, type RequestError } from "octokit";
 
-import { ACCESS_TOKEN_KEY } from "../constants";
 import logger from "../utils/logger";
 
-export const getOctokitInstance = (accessToken?: string) => {
+export const getOctokitInstance = (
+  accessToken: string | undefined,
+  onUnauthorized: () => void,
+) => {
   const _octokit = new Octokit(
     accessToken
       ? {
@@ -12,8 +14,8 @@ export const getOctokitInstance = (accessToken?: string) => {
       : {},
   );
   _octokit.hook.error("request", (error) => {
-    if ((error as RequestError).status === 401) {
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
+    if (accessToken && (error as RequestError).status === 401) {
+      onUnauthorized();
       logger.w(`Access token expired.`);
     }
     throw error;

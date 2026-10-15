@@ -83,16 +83,8 @@ export const createOAuthServer = ({
           signal: AbortSignal.timeout(10000),
         },
       );
-      if (!upstream.ok) throw new Error("OAuth exchange failed");
       const data = await upstream.json();
-      if (
-        data?.error ||
-        typeof data?.access_token !== "string" ||
-        !data.access_token
-      ) {
-        throw new Error("Invalid OAuth response");
-      }
-      send(200, { access_token: data.access_token });
+      send(upstream.status, data);
     } catch {
       send(502, { error: "oauth_exchange_failed" });
     }

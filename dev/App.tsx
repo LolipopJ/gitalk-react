@@ -1,16 +1,16 @@
 import "./app.scss";
 
 import { useRequest } from "ahooks";
+import { Octokit } from "octokit";
 import { useEffect, useMemo, useState } from "react";
 
-import { ACCESS_TOKEN_KEY } from "../lib/constants";
 import Gitalk from "../lib/gitalk";
 import { i18nMap, type Lang } from "../lib/i18n";
 import type { GitalkProps, Issue } from "../lib/interfaces";
-import getOctokitInstance from "../lib/services/request";
 import { Logger } from "../lib/utils/logger";
 
 const logger = new Logger({ prefix: "Gitalk Dev Page" });
+const octokit = new Octokit();
 
 type Theme = "light" | "dark";
 const THEME_LIST: { label: string; key: Theme }[] = [
@@ -105,10 +105,6 @@ const App = () => {
       Number(searchParams.get("issueNumber")) || undefined;
     setIssueNumber(initialIssueNumber);
   }, []);
-
-  const octokit = getOctokitInstance(
-    localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined,
-  );
 
   const {
     data: issues = [],

@@ -143,6 +143,9 @@ const mountGitalk = ({ authenticated = false, ...initialProps } = {}) => {
   const useRequest = loadAhooks(
     join(dirname(require.resolve("ahooks")), "useRequest/src/useRequest.js"),
   ).default;
+  const useMemoizedFn = loadAhooks(
+    join(dirname(require.resolve("ahooks")), "useMemoizedFn/index.js"),
+  ).default;
   const source = readFileSync(
     new URL("../lib/gitalk.tsx", import.meta.url),
     "utf8",
@@ -157,7 +160,7 @@ const mountGitalk = ({ authenticated = false, ...initialProps } = {}) => {
   context.exports = {};
   context.require = (name) => {
     if (name === "react") return { __esModule: true, ...react, default: react };
-    if (name === "ahooks") return { useRequest };
+    if (name === "ahooks") return { useRequest, useMemoizedFn };
     if (name === "classnames") return { __esModule: true, default: () => "gt" };
     if (name === "./constants") {
       return {
@@ -172,7 +175,8 @@ const mountGitalk = ({ authenticated = false, ...initialProps } = {}) => {
     if (name === "./utils/compatibility") {
       return { supportsCSSVariables: () => true, supportsES2020: () => true };
     }
-    if (name === "./utils/query") return { parseSearchQuery: () => ({}) };
+    if (name === "./services/user")
+      return { consumeOAuthCallback: () => undefined };
     if (name === "./utils/logger") {
       return { __esModule: true, default: { i() {}, s() {}, w() {}, e() {} } };
     }
