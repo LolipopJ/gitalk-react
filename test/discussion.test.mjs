@@ -170,7 +170,10 @@ const mountGitalk = ({ authenticated = false, ...initialProps } = {}) => {
       };
     }
     if (name === "./i18n") {
-      return { __esModule: true, default: () => ({ t: (key) => key }) };
+      return {
+        __esModule: true,
+        default: () => ({ t: (key) => key, locale: () => "en" }),
+      };
     }
     if (name === "./utils/compatibility") {
       return { supportsCSSVariables: () => true, supportsES2020: () => true };

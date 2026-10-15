@@ -22,10 +22,8 @@ export const i18nMap = {
   en,
   zh: zhCN,
   "zh-CN": zhCN,
-  "zh-SG": zhCN,
   "zh-TW": zhTW,
   "zh-HK": zhTW,
-  "zh-MO": zhTW,
   hi,
   es,
   fr,
@@ -43,9 +41,28 @@ export const i18nMap = {
 
 export type Lang = keyof typeof i18nMap;
 
-const getPolyglotInstance = (lang: Lang = DEFAULT_LANG) => {
+export const resolveLanguage = (language: string = DEFAULT_LANG): Lang => {
+  try {
+    const locale = new Intl.Locale(language);
+    if (Object.prototype.hasOwnProperty.call(i18nMap, locale.baseName)) {
+      return locale.baseName as Lang;
+    }
+    if (locale.language === "zh") {
+      return locale.maximize().script === "Hant" ? "zh-TW" : "zh-CN";
+    }
+    if (Object.prototype.hasOwnProperty.call(i18nMap, locale.language)) {
+      return locale.language as Lang;
+    }
+  } catch {
+    // Invalid language tags use the default translation, just like unknown ones.
+  }
+  return DEFAULT_LANG;
+};
+
+const getPolyglotInstance = (language: string = DEFAULT_LANG) => {
+  const lang = resolveLanguage(language);
   return new Polyglot({
-    phrases: i18nMap[lang] ?? i18nMap.en,
+    phrases: i18nMap[lang],
     locale: lang,
   });
 };

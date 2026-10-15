@@ -1,6 +1,4 @@
 import cn from "classnames";
-import { formatDistanceToNow, parseISO } from "date-fns";
-import { enUS } from "date-fns/locale";
 import React, {
   useContext,
   useEffect,
@@ -17,6 +15,7 @@ import HeartFilled from "../assets/heart-filled.svg?raw";
 import Reply from "../assets/reply.svg?raw";
 import I18nContext from "../contexts/I18nContext";
 import type { Comment as CommentType, GitalkProps } from "../interfaces";
+import { formatRelativeTime } from "../utils/date";
 import Avatar from "./avatar";
 import Svg from "./svg";
 
@@ -51,7 +50,7 @@ const Comment: React.FC<CommentProps> = ({
 
   const [collapsed, setCollapsed] = useState<boolean>(false);
 
-  const { language, polyglot, dateFnsLocaleMap } = useContext(I18nContext);
+  const { polyglot, relativeTimeFormat } = useContext(I18nContext);
 
   const { body_html, created_at, user, reactionsHeart, html_url } = comment;
   const commentHtmlUrl = html_url.includes("github.com")
@@ -139,10 +138,7 @@ const Comment: React.FC<CommentProps> = ({
               {polyglot.t("commented")}
             </span>
             <span className="gt-comment-date__time">
-              {formatDistanceToNow(parseISO(created_at), {
-                addSuffix: true,
-                locale: dateFnsLocaleMap[language] ?? enUS,
-              })}
+              {formatRelativeTime(created_at, relativeTimeFormat)}
             </span>
           </div>
           <div className="gt-comment-actions">

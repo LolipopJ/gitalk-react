@@ -137,7 +137,7 @@ The content of the comment topic.
 
 The language used by Gitalk React.
 
-Available languages include: `"de" | "en" | "es-ES" | "fa" | "fr" | "ja" | "ko" | "pl" | "ru" | "zh-CN" | "zh-TW"`.
+Available translations: `ar`, `bn`, `de`, `en`, `es`, `fa`, `fr`, `hi`, `ja`, `ko`, `pl`, `pt`, `ru`, `ur`, `zh-CN`, and `zh-TW`. BCP 47 regional tags such as `fr-FR`, `de-DE`, and `ja-JP` select the base translation. Chinese region and script tags preserve simplified/traditional Chinese (`zh-Hans` / `zh-Hant`). Unsupported or invalid tags use English. Relative comment dates use `Intl.RelativeTimeFormat` with the same resolved language.
 
 ### perPage `number = 10`
 
@@ -160,21 +160,6 @@ Whether to enable hotkeys like `cmd + enter` or `ctrl + enter` to publish commen
 ### distractionFreeMode `boolean = false`
 
 Whether to enable full-screen overlay effects similar to Facebook's comment box.
-
-### flipMoveOptions `FlipMove.FlipMoveProps`
-
-Animation effects for the comment list.
-
-Default values (referenced effects can be found [here](https://github.com/joshwcomeau/react-flip-move/blob/master/documentation/enter_leave_animations.md)):
-
-```json
-{
-  "staggerDelayBy": 150,
-  "appearAnimation": "accordionVertical",
-  "enterAnimation": "accordionVertical",
-  "leaveAnimation": "accordionVertical"
-}
-```
 
 ### proxy `string`
 
@@ -212,7 +197,9 @@ Callback method invoked when updating the number of comments.
 
 Callback method invoked when a comment is successfully created.
 
-## Theme Styles
+## Theming
+
+### Colors
 
 You can quickly modify Gitalk React's theme colors to match your site's style by setting CSS variables.
 
@@ -273,6 +260,10 @@ When importing dark theme with `import 'gitalk-react/gitalk-dark.css'`, the defa
   --gt-color-popbg: #171717;
 }
 ```
+
+### Animation
+
+Comments use native CSS accordion/fade animations for entry and exit, and CSS transform transitions when reordered. Animations last 0.3 seconds and respect `prefers-reduced-motion`. The animation library options and default-options export have been removed; customize `.gt-comment-item` in CSS.
 
 ## Proxy Deployment
 

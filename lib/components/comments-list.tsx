@@ -1,12 +1,12 @@
-import React, { forwardRef, useContext } from "react";
-import FlipMove from "react-flip-move";
+import React, { useContext } from "react";
 
 import I18nContext from "../contexts/I18nContext";
 import type { Comment as CommentType, GitalkProps, User } from "../interfaces";
+import AnimatedComments from "./animated-comments";
 import Button from "./button";
 import Comment, { type CommentProps } from "./comment";
 
-interface CommentWithForwardedRefProps
+interface CommentItemProps
   extends
     Pick<
       CommentProps,
@@ -25,11 +25,13 @@ interface CommentWithForwardedRefProps
   user?: User;
 }
 
-// Why forwardRef? https://www.npmjs.com/package/react-flip-move#usage-with-functional-components
-const CommentWithForwardedRef = forwardRef<
-  HTMLDivElement,
-  CommentWithForwardedRefProps
->(({ comment, user, admin, onLike, ...restProps }, ref) => {
+const CommentItem: React.FC<CommentItemProps> = ({
+  comment,
+  user,
+  admin,
+  onLike,
+  ...restProps
+}) => {
   const {
     id: commentId,
     user: commentAuthor,
@@ -49,24 +51,19 @@ const CommentWithForwardedRef = forwardRef<
   )?.databaseId;
 
   return (
-    <div ref={ref}>
-      <Comment
-        {...restProps}
-        comment={comment}
-        isAuthor={isAuthor}
-        isAdmin={isAdmin}
-        onLike={(like) => {
-          onLike(like, commentId, heartReactionId);
-        }}
-      />
-    </div>
+    <Comment
+      {...restProps}
+      comment={comment}
+      isAuthor={isAuthor}
+      isAdmin={isAdmin}
+      onLike={(like) => {
+        onLike(like, commentId, heartReactionId);
+      }}
+    />
   );
-});
+};
 
-interface CommentsListProps
-  extends
-    Pick<GitalkProps, "flipMoveOptions">,
-    Omit<CommentWithForwardedRefProps, "comment"> {
+interface CommentsListProps extends Omit<CommentItemProps, "comment"> {
   comments: CommentType[];
   commentsCount: number;
   onGetComments: () => void;
@@ -79,7 +76,6 @@ const CommentsList: React.FC<CommentsListProps> = (props) => {
     commentsCount,
     onGetComments,
     getCommentsLoading,
-    flipMoveOptions,
     ...restCommentProps
   } = props;
 
@@ -87,15 +83,15 @@ const CommentsList: React.FC<CommentsListProps> = (props) => {
 
   return (
     <div className="gt-comments" key="comments">
-      <FlipMove {...flipMoveOptions}>
+      <AnimatedComments>
         {comments.map((comment) => (
-          <CommentWithForwardedRef
+          <CommentItem
             {...restCommentProps}
             key={comment.id.toString()}
             comment={comment}
           />
         ))}
-      </FlipMove>
+      </AnimatedComments>
       {!commentsCount && (
         <p className="gt-comments-null">{polyglot.t("first-comment-person")}</p>
       )}

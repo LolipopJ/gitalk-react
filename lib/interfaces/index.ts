@@ -1,7 +1,5 @@
 import type { Endpoints } from "@octokit/types";
-import type FlipMove from "react-flip-move";
 
-import type { Lang } from "../i18n";
 import type { IssueCommentsQLResponse } from "../services/graphql/comment";
 
 export interface GitalkProps extends Omit<
@@ -63,11 +61,12 @@ export interface GitalkProps extends Omit<
    */
   body?: string;
   /**
-   * Localization language key.
+   * BCP 47 language tag. Regional tags use the available base translation;
+   * Chinese tags preserve simplified/traditional script differences.
    *
    * @default navigator.language
    */
-  language?: Lang;
+  language?: string;
   /**
    * Pagination size, with maximum 100.
    *
@@ -100,21 +99,6 @@ export interface GitalkProps extends Omit<
    * @default false
    */
   distractionFreeMode?: boolean;
-  /**
-   * Comment list animation.
-   *
-   * @default
-   * ```ts
-   * {
-   *   staggerDelayBy: 150,
-   *   appearAnimation: 'accordionVertical',
-   *   enterAnimation: 'accordionVertical',
-   *   leaveAnimation: 'accordionVertical',
-   * }
-   * ```
-   * @link https://github.com/joshwcomeau/react-flip-move/blob/master/documentation/enter_leave_animations.md
-   */
-  flipMoveOptions?: FlipMove.FlipMoveProps;
   /**
    * With `clientSecret`: optional CORS relay, defaulting to `https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token`.
    * Without `clientSecret`: required server-side OAuth exchange endpoint.

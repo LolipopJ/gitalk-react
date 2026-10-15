@@ -30,6 +30,32 @@
   }
 }
 
+@keyframes gt-comment-enter {
+  from {
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    opacity: 0;
+  }
+
+  to {
+    grid-template-rows: 1fr;
+    overflow: hidden;
+    opacity: 1;
+  }
+}
+
+@keyframes gt-comment-leave {
+  from {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  to {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+
 $gt-size-base: 16px;
 $gt-size-border-radius: em(5px);
 $gt-size-loader-dot: em(6px);
@@ -55,6 +81,40 @@ $gt-breakpoint-mobile: 480px;
 
   * {
     box-sizing: border-box;
+  }
+
+  .gt-comment-list {
+    position: relative;
+  }
+
+  .gt-comment-item {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: transform 0.3s ease;
+
+    &--entering {
+      animation: gt-comment-enter 0.3s ease backwards;
+    }
+
+    > div {
+      min-height: 0;
+    }
+
+    &--leaving {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      overflow: hidden;
+      pointer-events: none;
+      animation: gt-comment-leave 0.3s ease forwards;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+
+      // Keep animationend so removed comments are released without a timer.
+      animation-duration: 1ms;
+    }
   }
 
   a {

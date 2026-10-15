@@ -415,11 +415,13 @@ const loadGitalk = (consumeOAuthCallback = () => undefined) => {
       if (path === "./constants")
         return {
           ACCESS_TOKEN_KEY: "GT_ACCESS_TOKEN",
-          DATE_FNS_LOCALE_MAP: {},
           DEFAULT_LABELS: ["Gitalk"],
         };
       if (path === "./i18n")
-        return { __esModule: true, default: () => ({ t: (key) => key }) };
+        return {
+          __esModule: true,
+          default: () => ({ t: (key) => key, locale: () => "en" }),
+        };
       if (path === "./utils/compatibility")
         return { supportsCSSVariables: () => true, supportsES2020: () => true };
       if (path === "./utils/logger")

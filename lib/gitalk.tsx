@@ -16,15 +16,9 @@ import { type CommentProps } from "./components/comment";
 import CommentTextarea from "./components/comment-textarea";
 import CommentsList from "./components/comments-list";
 import Meta from "./components/meta";
-import {
-  ACCESS_TOKEN_KEY,
-  DATE_FNS_LOCALE_MAP,
-  DEFAULT_FLIP_MOVE_OPTIONS,
-  DEFAULT_LABELS,
-  DEFAULT_USER,
-} from "./constants";
+import { ACCESS_TOKEN_KEY, DEFAULT_LABELS, DEFAULT_USER } from "./constants";
 import I18nContext, { type I18nContextValue } from "./contexts/I18nContext";
-import i18n, { type Lang } from "./i18n";
+import i18n from "./i18n";
 import type {
   Comment as CommentType,
   GitalkProps,
@@ -62,13 +56,12 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       (document
         ?.querySelector('meta[name="description"]')
         ?.getAttribute("content") ?? ""),
-    language = navigator.language as Lang,
+    language = navigator.language,
     perPage: propsPerPage = 10,
     pagerDirection = "last",
     createIssueManually = false,
     enableHotKey = true,
     distractionFreeMode = false,
-    flipMoveOptions = DEFAULT_FLIP_MOVE_OPTIONS,
     proxy,
     defaultUser: propsDefaultUser,
     defaultAuthor: propsDefaultAuthor,
@@ -148,11 +141,12 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   const polyglot = useMemo(() => i18n(language), [language]);
   const i18nContextValue: I18nContextValue = useMemo(
     () => ({
-      language,
       polyglot,
-      dateFnsLocaleMap: DATE_FNS_LOCALE_MAP,
+      relativeTimeFormat: new Intl.RelativeTimeFormat(polyglot.locale(), {
+        numeric: "auto",
+      }),
     }),
-    [language, polyglot],
+    [polyglot],
   );
 
   const [accessToken, setAccessToken] = useState<string | undefined>(
@@ -942,7 +936,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
                 commentsCount={commentsCount}
                 onGetComments={runGetComments}
                 getCommentsLoading={getCommentsLoading}
-                flipMoveOptions={flipMoveOptions}
                 user={user}
                 admin={admin}
                 onReply={onReplyComment}
@@ -998,7 +991,5 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 };
 
 export type { GitalkProps };
-
-export { DEFAULT_FLIP_MOVE_OPTIONS };
 
 export default Gitalk;
