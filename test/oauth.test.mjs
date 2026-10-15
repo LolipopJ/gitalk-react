@@ -236,6 +236,7 @@ const loadGitalk = () => {
   const hooks = {
     useCallback: (fn) => fn,
     useEffect: () => {},
+    useLayoutEffect: () => {},
     useMemo: (fn) => fn(),
     useRef: () => ({ current: null }),
     useState: (initial) => [initial, () => {}],

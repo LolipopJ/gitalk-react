@@ -5,6 +5,7 @@ import cn from "classnames";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -89,11 +90,29 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     [propsIssueLabels, issueId],
   );
 
+  const issueScope = JSON.stringify([
+    owner,
+    repo,
+    issueNumber,
+    issueId,
+    issueLabels,
+  ]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [inputComment, setInputComment] = useState<string>("");
+  const draftVersionRef = useRef(0);
+  const submissionRef = useRef<object | null>(null);
+  const updateInputComment = useCallback(
+    (value: React.SetStateAction<string>) => {
+      draftVersionRef.current += 1;
+      setInputComment(value);
+    },
+    [],
+  );
   const [isInputFocused, setIsInputFocused] = useState<boolean>(false);
 
   const [commentsCount, setCommentsCount] = useState<number>(0);
+  const [comments, setComments] = useState<CommentType[]>([]);
+  const [localComments, setLocalComments] = useState<CommentType[]>([]);
   const [commentsCursor, setCommentsCursor] = useState("");
   const [commentsPage, setCommentsPage] = useState<number>(1);
   const commentsPerPage = useMemo(
@@ -203,7 +222,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     );
   }, [admin, user]);
 
-  const { loading: createIssueLoading, run: runCreateIssue } = useRequest(
+  const {
+    loading: createIssueLoading,
+    run: runCreateIssue,
+    cancel: cancelCreateIssue,
+  } = useRequest(
     async () => {
       logger.i(`Creating issue...`);
 
@@ -222,22 +245,27 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         const _issue = createIssueRes.data;
         logger.s(`Create issue successfully:`, _issue);
 
-        onCreateIssue?.(_issue);
-
-        setIssue(_issue);
+        return _issue;
       } else {
-        setAlert(`Create issue failed: ${createIssueRes}`);
-        logger.e(`Create issue failed:`, createIssueRes);
+        throw new Error(`Create issue failed: ${createIssueRes}`);
       }
     },
     {
       manual: true,
       ready:
         !!isAdmin && !!owner && !!repo && !!issueTitle && !!issueLabels.length,
+      onSuccess: (createdIssue) => {
+        setIssue(createdIssue);
+        onCreateIssue?.(createdIssue);
+      },
+      onError: (error) => {
+        setAlert(error.message);
+        logger.e(`Create issue failed:`, error);
+      },
     },
   );
 
-  const { loading: getIssueLoading } = useRequest(
+  const { loading: getIssueLoading, cancel: cancelGetIssue } = useRequest(
     async () => {
       if (issueNumber) {
         const getIssueRes = await octokit.request(
@@ -255,22 +283,14 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             `Locate issue ${issueNumber} in repository ${owner}/${repo} successfully:`,
             _issue,
           );
-          setIssue(_issue);
+          return _issue;
         } else if (getIssueRes.status === 404) {
           logger.w(
             `Issue ${issueNumber} in repository ${owner}/${repo} was not found.`,
           );
-
-          if (isAdmin && !createIssueManually) {
-            runCreateIssue();
-          }
         } else {
-          setAlert(
+          throw new Error(
             `Get issue ${issueNumber} in repository ${owner}/${repo} failed: ${getIssueRes}`,
-          );
-          logger.e(
-            `Get issue ${issueNumber} in repository ${owner}/${repo} failed:`,
-            getIssueRes,
           );
         }
       } else if (issueId) {
@@ -292,51 +312,51 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
               `Locate issue with labels ${issueLabels} in repository ${owner}/${repo} successfully:`,
               _issue,
             );
-            setIssue(_issue);
+            return _issue;
           } else {
             logger.w(
               `Issue with labels ${issueLabels} in repository ${owner}/${repo} was not found.`,
             );
-
-            if (isAdmin && !createIssueManually) {
-              runCreateIssue();
-            }
           }
         } else if (getIssuesStatus === 404) {
           logger.w(
             `Issue with labels ${issueLabels} in repository ${owner}/${repo} was not found.`,
           );
-
-          if (isAdmin && !createIssueManually) {
-            runCreateIssue();
-          }
         } else {
-          setAlert(
+          throw new Error(
             `Get issue with labels ${issueLabels} in repository ${owner}/${repo} failed: ${getIssuesRes}`,
-          );
-          logger.e(
-            `Get issue with labels ${issueLabels} in repository ${owner}/${repo} failed:`,
-            getIssuesRes,
           );
         }
       }
+      return undefined;
     },
     {
       ready: !!owner && !!repo && (!!issueNumber || !!issueId),
-      refreshDeps: [owner, repo, issueNumber, issueId],
+      refreshDeps: [issueScope],
       onBefore: () => {
         setIssue(undefined);
+      },
+      onSuccess: (locatedIssue) => {
+        setIssue(locatedIssue);
+        if (!locatedIssue && isAdmin && !createIssueManually) runCreateIssue();
+      },
+      onError: (error) => {
+        setAlert(error.message);
+        logger.e(`Get issue failed:`, error);
       },
     },
   );
 
   const {
-    data: comments = [],
-    mutate: setComments,
     run: runGetComments,
     loading: getCommentsLoading,
+    cancel: cancelGetComments,
   } = useRequest(
-    async (): Promise<CommentType[]> => {
+    async (): Promise<{
+      comments: CommentType[];
+      cursor?: string;
+      page?: number;
+    }> => {
       const { number: currentIssueNumber } = issue as IssueType;
       const from = (commentsPage - 1) * commentsPerPage + 1;
       const to = commentsPage * commentsPerPage;
@@ -388,18 +408,17 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             getIssueCommentsRes.repository.issue.comments.pageInfo;
           const commentsPageCursor =
             commentsPageInfo.startCursor || commentsPageInfo.endCursor || "";
-          setCommentsCursor(commentsPageCursor);
 
-          if (commentsPagerDirection === "last")
-            return [..._comments, ...comments];
-          else return [...comments, ..._comments];
+          return {
+            comments:
+              commentsPagerDirection === "last"
+                ? [..._comments, ...comments]
+                : [...comments, ..._comments],
+            cursor: commentsPageCursor,
+          };
         } else {
-          setAlert(
+          throw new Error(
             `Get comments from ${from} to ${to} failed: ${getIssueCommentsRes}`,
-          );
-          logger.e(
-            `Get comments from ${from} to ${to} failed:`,
-            getIssueCommentsRes,
           );
         }
       } else {
@@ -436,35 +455,38 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             _comments,
           );
 
-          setCommentsPage((prev) => prev + 1);
-
-          return [...comments, ..._comments];
+          return {
+            comments: [...comments, ..._comments],
+            page: commentsPage + 1,
+          };
         } else {
-          setAlert(
+          throw new Error(
             `Get comments from ${from} to ${to} failed: ${getIssueCommentsRes}`,
-          );
-          logger.e(
-            `Get comments from ${from} to ${to} failed:`,
-            getIssueCommentsRes,
           );
         }
       }
-
-      return comments;
     },
     {
       manual: true,
       ready: !!owner && !!repo && !!issue && !getUserLoading,
+      onSuccess: (result) => {
+        setComments(result.comments);
+        if (result.cursor !== undefined) setCommentsCursor(result.cursor);
+        if (result.page !== undefined) setCommentsPage(result.page);
+      },
+      onError: (error) => {
+        setAlert(error.message);
+        logger.e(`Get comments failed:`, error);
+      },
     },
   );
 
   const {
-    data: localComments = [],
-    mutate: setLocalComments,
     loading: createIssueCommentLoading,
     runAsync: runCreateIssueComment,
+    cancel: cancelCreateIssueComment,
   } = useRequest(
-    async (): Promise<CommentType[]> => {
+    async (body: string): Promise<CommentType> => {
       const { number: currentIssueNumber } = issue as IssueType;
 
       const createIssueCommentRes = await octokit.request(
@@ -473,7 +495,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           owner,
           repo,
           issue_number: currentIssueNumber,
-          body: inputComment,
+          body,
           headers: {
             accept: "application/vnd.github.v3.full+json",
           },
@@ -493,45 +515,99 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         } as CommentType;
         logger.s(`Create issue comment successfully.`);
 
-        setInputComment("");
-        setCommentsCount((prev) => prev + 1);
-
-        onCreateComment?.(createdIssueComment);
-
-        return localComments.concat([createdIssueComment]);
+        return createdIssueComment;
       } else {
-        setAlert(`Create issue comment failed: ${createIssueCommentRes}`);
-        logger.e(`Create issue comment failed:`, createIssueCommentRes);
-        return localComments;
+        throw new Error(
+          `Create issue comment failed: ${createIssueCommentRes}`,
+        );
       }
     },
     {
       manual: true,
-      ready: !!owner && !!repo && !!issue && !!inputComment,
+      ready: !!owner && !!repo && !!issue && !!user,
+      onSuccess: (createdComment) => {
+        setLocalComments((prev) => prev.concat(createdComment));
+        setCommentsCount((prev) => prev + 1);
+        onCreateComment?.(createdComment);
+      },
+      onError: (error) => {
+        setAlert(error.message);
+        logger.e(`Create issue comment failed:`, error);
+      },
     },
   );
 
-  useEffect(() => {
+  const submitComment = async () => {
+    if (
+      !user ||
+      !issue ||
+      !owner ||
+      !repo ||
+      !inputComment.trim() ||
+      getIssueLoading ||
+      createIssueCommentLoading ||
+      submissionRef.current
+    )
+      return;
+    const submission = {};
+    const draftVersion = draftVersionRef.current;
+    submissionRef.current = submission;
+    try {
+      await runCreateIssueComment(inputComment);
+      if (
+        submissionRef.current === submission &&
+        draftVersionRef.current === draftVersion
+      ) {
+        setInputComment("");
+      }
+    } catch {
+      // useRequest reports active request failures through onError.
+    } finally {
+      if (submissionRef.current === submission) submissionRef.current = null;
+    }
+  };
+
+  useLayoutEffect(() => {
+    setIssue(undefined);
     setComments([]);
-    setCommentsCount(issue?.comments ?? 0);
-    setCommentsCursor("");
-    setCommentsPage(1);
     setLocalComments([]);
+    setCommentsCount(0);
+    setCommentsCursor("");
+    setCommentsPage(1);
+    setAlert("");
+    return () => {
+      cancelGetIssue();
+      cancelCreateIssue();
+      cancelGetComments();
+      cancelCreateIssueComment();
+      submissionRef.current = null;
+    };
+  }, [
+    issueScope,
+    cancelGetIssue,
+    cancelCreateIssue,
+    cancelGetComments,
+    cancelCreateIssueComment,
+  ]);
 
-    setTimeout(() => {
-      runGetComments();
-    });
-  }, [issue, runGetComments, setComments, setLocalComments]);
+  useEffect(() => {
+    setCommentsCount(issue?.comments ?? 0);
+    setLocalComments([]);
+  }, [issue]);
 
   useEffect(() => {
     setComments([]);
     setCommentsCursor("");
     setCommentsPage(1);
 
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       runGetComments();
     });
-  }, [user, commentsPagerDirection, setComments, runGetComments]);
+    return () => {
+      clearTimeout(timer);
+      cancelGetComments();
+    };
+  }, [issue, user, commentsPagerDirection, cancelGetComments, runGetComments]);
 
   /** sorted all comments */
   const loadedComments = useMemo(() => {
@@ -718,7 +794,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     HTMLTextAreaElement
   > = (e) => {
     if (enableHotKey && (e.metaKey || e.ctrlKey) && e.keyCode === 13) {
-      runCreateIssueComment();
+      e.preventDefault();
+      void submitComment();
     }
   };
 
@@ -736,7 +813,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         (text) => `> ${text}`,
       );
 
-      setInputComment((prevComment) => {
+      updateInputComment((prevComment) => {
         if (prevComment) {
           repliedCommentBodyArray.unshift("", "");
         }
@@ -749,7 +826,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         textareaRef.current?.focus();
       });
     },
-    [],
+    [updateInputComment],
   );
 
   if (!isModernBrowser) {
@@ -808,7 +885,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
               <CommentTextarea
                 ref={textareaRef}
                 value={inputComment}
-                onChange={(e) => setInputComment(e.target.value)}
+                onChange={(e) => updateInputComment(e.target.value)}
                 onFocus={onCommentInputFocus}
                 onBlur={onCommentInputBlur}
                 onKeyDown={onCommentInputKeyDown}
@@ -816,9 +893,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
                 octokit={octokit}
                 user={user}
                 onLogin={onLogin}
-                onCreateComment={async () => {
-                  await runCreateIssueComment();
-                }}
+                onCreateComment={submitComment}
                 createCommentLoading={createIssueCommentLoading}
                 onPreviewError={(e) => {
                   setAlert(`Preview rendered comment failed: ${e}`);

@@ -48,8 +48,9 @@
     "lint:ts": "eslint . --fix",
     "lint:scss": "stylelint **/*.scss --fix",
     "start:proxy": "node --env-file=proxy-server/.env.local proxy-server/server.mjs",
-    "test": "yarn test:oauth && yarn test:preview",
+    "test": "yarn test:oauth && yarn test:discussion && yarn test:preview",
     "test:oauth": "node --test test/oauth.test.mjs proxy-server/server.test.mjs",
+    "test:discussion": "node --test test/discussion.test.mjs",
     "test:preview": "node --test test/preview.test.mjs"
   },
   "dependencies": {
