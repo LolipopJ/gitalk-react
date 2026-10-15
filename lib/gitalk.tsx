@@ -1,3 +1,5 @@
+"use client";
+
 import "./i18n";
 
 import { useMemoizedFn, useRequest } from "ahooks";
@@ -948,6 +950,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   );
 };
 
+export { Gitalk };
 export type { GitalkProps };
 
 export default Gitalk;

@@ -16,19 +16,27 @@
   "type": "module",
   "files": [
     "dist/",
-    "lib/",
     "proxy-server/",
     "LICENSE",
     "package.json",
     "README-zh-CN.md",
     "README.md"
   ],
-  "main": "./dist/gitalk.umd.cjs",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "main": "./dist/gitalk.cjs",
   "module": "./dist/gitalk.js",
   "exports": {
     ".": {
-      "import": "./dist/gitalk.js",
-      "require": "./dist/gitalk.umd.cjs"
+      "import": {
+        "types": "./dist/gitalk.d.mts",
+        "default": "./dist/gitalk.js"
+      },
+      "require": {
+        "types": "./dist/gitalk.d.cts",
+        "default": "./dist/gitalk.cjs"
+      }
     },
     "./gitalk.css": "./dist/gitalk-light.css",
     "./light.css": "./dist/gitalk-light.css",
@@ -36,7 +44,7 @@
     "./dark.css": "./dist/gitalk-dark.css",
     "./gitalk-dark.css": "./dist/gitalk-dark.css"
   },
-  "types": "./dist/gitalk.d.ts",
+  "types": "./dist/gitalk.d.mts",
   "scripts": {
     "dev": "vite --config vite.config.preview.ts",
     "build": "yarn build:lib && yarn build:preview",
@@ -44,18 +52,16 @@
     "build:ts": "tsc -b && vite build",
     "build:scss": "vite build --config vite.config.scss.ts",
     "build:preview": "vite build --config vite.config.preview.ts",
+    "analyze": "vite build --mode analyze",
+    "prepack": "yarn test",
     "lint": "yarn lint:ts && yarn lint:scss",
     "lint:ts": "eslint . --fix",
     "lint:scss": "stylelint **/*.scss --fix",
     "start:proxy": "node --env-file=proxy-server/.env.local proxy-server/server.mjs",
-    "test": "node --test test/*.test.mjs proxy-server/server.test.mjs",
-    "test:animation": "node --test test/animated-comments.test.mjs",
-    "test:i18n": "node --test test/i18n.test.mjs",
-    "test:oauth": "node --test test/oauth.test.mjs proxy-server/server.test.mjs",
-    "test:discussion": "node --test test/discussion.test.mjs",
-    "test:preview": "node --test test/preview.test.mjs"
+    "test": "yarn build:lib && node --test test/*.test.mjs proxy-server/server.test.mjs"
   },
   "dependencies": {
+    "@octokit/types": "^18.0.0",
     "ahooks": "^3.10.0",
     "classnames": "^2.5.1",
     "node-polyglot": "^2.6.0",
@@ -68,7 +74,6 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@microsoft/api-extractor": "^7.59.4",
-    "@octokit/types": "^18.0.0",
     "@types/node": "^24.19.2",
     "@types/node-polyglot": "^2.5.0",
     "@types/react": "^16.14.70",

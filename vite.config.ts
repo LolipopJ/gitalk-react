@@ -1,27 +1,33 @@
+import { copyFile } from "node:fs/promises";
+
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
 import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
-import { peerDependencies } from "./package.json" with { type: "json" };
+import packageJson from "./package.json" with { type: "json" };
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   build: {
     lib: {
       entry: resolve(import.meta.dirname, "lib/gitalk.tsx"),
-      name: "Gitalk",
       fileName: "gitalk",
+      formats: ["es", "cjs"],
     },
     rollupOptions: {
-      external: ["react/jsx-runtime", ...Object.keys(peerDependencies)],
+      external: [
+        "react/jsx-runtime",
+        ...Object.keys(packageJson.peerDependencies),
+      ],
       output: {
-        globals: {
-          react: "React",
-          "react-dom": "ReactDOM",
-          "react/jsx-runtime": "jsx",
-        },
+        banner: '"use client";',
+        exports: "named",
+        footer: (chunk) =>
+          chunk.fileName.endsWith(".cjs")
+            ? "module.exports = Object.assign(module.exports.default, { Gitalk: module.exports.Gitalk });"
+            : "",
       },
     },
   },
@@ -30,9 +36,13 @@ export default defineConfig({
     dts({
       tsconfigPath: "tsconfig.lib.json",
       bundleTypes: true,
+      outDirs: [{ dir: "dist", moduleFormat: "esm" }],
+      afterBuild: () =>
+        copyFile(
+          resolve(import.meta.dirname, "types/gitalk.d.cts"),
+          resolve(import.meta.dirname, "dist/gitalk.d.cts"),
+        ),
     }),
-    visualizer({
-      open: true,
-    }),
+    mode === "analyze" && visualizer({ open: true }),
   ],
-});
+}));

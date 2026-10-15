@@ -35,7 +35,7 @@ Import styles and component into your project:
 // Import light mode styles
 import 'gitalk-react/gitalk.css'
 // Or dark mode styles
-import 'gitalk-react/gitalk-dark.css'
+// import 'gitalk-react/gitalk-dark.css'
 
 import Gitalk from 'gitalk-react'
 ```
@@ -82,6 +82,28 @@ For a secure deployment with your backend proxy server, use the following config
   admin={['GITHUB_REPO_OWNER', 'GITHUB_REPO_COLLABORATOR']}
 />
 ```
+
+### Client-only rendering
+
+Gitalk React is a **client component** and does **not support server-side rendering (SSR)**. It reads browser APIs during rendering. The source entry and both published JavaScript entry points carry `"use client"`; this marks the React client boundary but does not disable prerendering in SSR frameworks.
+
+In Next.js App Router, create a client wrapper and disable SSR for the dynamic import:
+
+```tsx
+'use client'
+
+import dynamic from 'next/dynamic'
+import type { GitalkProps } from 'gitalk-react'
+import 'gitalk-react/gitalk.css'
+
+const Gitalk = dynamic(() => import('gitalk-react'), { ssr: false })
+
+export default function Comments(props: GitalkProps) {
+  return <Gitalk {...props} />
+}
+```
+
+Render this wrapper with the configuration shown above. Other SSR frameworks must also load and mount Gitalk only in the browser.
 
 ## Configuration
 
