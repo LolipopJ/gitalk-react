@@ -42,7 +42,7 @@ import Gitalk from 'gitalk-react'
 
 Gitalk React 依赖于 Github OAuth App 进行登录认证；您需要首先[注册一个应用](https://github.com/settings/applications/new)。请注意，您必须将站点域名作为 `Authorization callback URL` 字段的值，例如 `https://yourdomain.com/site`，开发环境下则为 `http://localhost:5432`。
 
-通过后端代理服务器进行安全部署，请使用以下配置项：
+通过自建后端代理服务器实现安全部署，请使用以下配置：
 
 - `clientID`：您的 GitHub OAuth App ID。
 - `proxy`：后端代理服务器的 URL 端点，用于安全地处理 OAuth 授权码到令牌的交换。详见[部署代理](#部署代理)章节。
@@ -61,9 +61,9 @@ Gitalk React 依赖于 Github OAuth App 进行登录认证；您需要首先[注
 ```
 
 > [!CAUTION]
-> 提供 `clientSecret` 将启用**客户端交换（不安全）模式**，该模式会使用您指定的 CORS 中继或未指定 `proxy` 时的默认中继。此模式会将密钥暴露给访问者和中继服务。若要使用服务端交换，请省略 `clientSecret` 并提供您的后端 `proxy`。
+> 提供 `clientSecret` 会使 Gitalk 将 OAuth 授权模式降级为隐式授权流（Implicit Grant Flow）模式。该模式会将密钥暴露给访问者和中继服务，行业标准已正式弃用并反对使用此模式。
 
-若使用暴露密钥的传统部署方式，请使用以下配置项：
+**请务必清楚您正在执行的操作。** 对于仍需使用已暴露密钥的旧版部署方式，请使用以下配置：
 
 - `clientID`：您的 GitHub OAuth App ID。
 - `clientSecret`：您的 GitHub OAuth App Secret。
@@ -283,7 +283,7 @@ Gitalk React 使用的语言。
 
 评论的进入和退出使用原生 CSS 手风琴/淡入淡出动画，重新排序时使用 CSS transform 过渡。动画持续时间为 0.3 秒，并遵循 `prefers-reduced-motion` 偏好设置。动画库选项和默认选项导出已被移除；请在 CSS 中自定义 `.gt-comment-item`。
 
-## 代理部署
+## 部署代理
 
 [内置的 Node 代理](./proxy-server/README.md)需要 Node.js 22 或更高版本，无需额外安装包。将 `proxy-server/.env.example` 复制为 `proxy-server/.env.local`，然后在服务器上设置 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET` 和 `ALLOWED_ORIGIN`。Origin 必须与你的站点源完全匹配，不包含路径或尾部斜杠。
 

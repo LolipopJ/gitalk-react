@@ -17,10 +17,7 @@ export default defineConfig(({ mode }) => ({
       formats: ["es", "cjs"],
     },
     rollupOptions: {
-      external: [
-        "react/jsx-runtime",
-        ...Object.keys(packageJson.peerDependencies),
-      ],
+      external: Object.keys(packageJson.peerDependencies),
       output: {
         banner: '"use client";',
         exports: "named",
@@ -32,7 +29,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
-    react(),
+    react({ jsxRuntime: "classic" }),
     dts({
       tsconfigPath: "tsconfig.lib.json",
       bundleTypes: true,

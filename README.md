@@ -42,7 +42,7 @@ import Gitalk from 'gitalk-react'
 
 Gitalk React relies on GitHub OAuth App for login authentication; you need to first [register an application](https://github.com/settings/applications/new). Please note that you must set your site domain as the value of the `Authorization callback URL` field, such as `https://yourdomain.com/site` or for development environments `http://localhost:5432`.
 
-For a secure deployment with your backend proxy server, use the following configuration items:
+For a secure deployment with your own backend proxy server, use the following configurations:
 
 - `clientID`: The ID of your GitHub OAuth App.
 - `proxy`: The URL endpoint of your backend proxy server which securely handles the OAuth authorization code-to-token exchange. See [Proxy Deployment](#proxy-deployment).
@@ -61,9 +61,9 @@ For a secure deployment with your backend proxy server, use the following config
 ```
 
 > [!CAUTION]
-> Providing `clientSecret` selects the **client-side exchange (UNSAFE) mode**, using your chosen CORS relay or the default relay when `proxy` is omitted. That mode exposes the secret to visitors and the relay. For server-side exchange, omit `clientSecret` and provide your backend `proxy`.
+> Providing `clientSecret` will make Gitalk downgrade the OAuth grant mode to the Implicit Grant Flow mode. This mode exposes the secret key to visitors and the relay, industry standards formally deprecate and discourage the mode.
 
-For a legacy deployment with exposed secret key, use the following configuration items:
+**Be aware of what you are doing.** For a legacy deployment with exposed secret key, use the following configurations:
 
 - `clientID`: The ID of your GitHub OAuth App.
 - `clientSecret`: The Secret key of your GitHub OAuth App.
