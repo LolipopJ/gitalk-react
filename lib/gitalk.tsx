@@ -160,8 +160,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   const [accessToken, setAccessToken] = useState<string | undefined>(
     () => localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined,
   );
+  const accessTokenRef = useRef(accessToken);
   const clearSession = useMemoizedFn((expiredToken?: string) => {
-    if (expiredToken !== undefined && expiredToken !== accessToken) return;
+    if (expiredToken !== undefined && expiredToken !== accessTokenRef.current)
+      return;
+    accessTokenRef.current = undefined;
     // Keep a pending login alive when the previous API token expires.
     if (expiredToken === undefined) cancelGetAccessToken();
     cancelGetUser();
@@ -195,6 +198,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       ready: !!clientID && !!(clientSecret || proxy),
       onSuccess: (data) => {
         localStorage.setItem(ACCESS_TOKEN_KEY, data);
+        accessTokenRef.current = data;
         setAccessToken(data);
         logger.s(`Get access token successfully`);
       },

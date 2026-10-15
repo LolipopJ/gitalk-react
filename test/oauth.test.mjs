@@ -310,10 +310,12 @@ for (const response of [
 const loadGitalk = (consumeOAuthCallback = () => undefined) => {
   const requests = [];
   const states = [];
+  const refs = [];
   const memoized = [];
   const clients = [];
   const effects = [];
   let stateIndex = 0;
+  let refIndex = 0;
   let requestIndex = 0;
   let memoizedIndex = 0;
   const logs = [];
@@ -341,7 +343,10 @@ const loadGitalk = (consumeOAuthCallback = () => undefined) => {
     useEffect: (fn) => effects.push(fn),
     useLayoutEffect: () => {},
     useMemo: (fn) => fn(),
-    useRef: () => ({ current: null }),
+    useRef: (initial) => {
+      const index = refIndex++;
+      return (refs[index] ??= { current: initial });
+    },
     useState: (initial) => {
       const index = stateIndex++;
       if (!(index in states))
@@ -450,7 +455,7 @@ const loadGitalk = (consumeOAuthCallback = () => undefined) => {
     },
   });
   const Gitalk = (props) => {
-    stateIndex = requestIndex = memoizedIndex = 0;
+    stateIndex = refIndex = requestIndex = memoizedIndex = 0;
     effects.length = 0;
     return exports.default(props);
   };
@@ -497,6 +502,34 @@ test("401 clears a freshly exchanged session and pending authenticated requests"
   app.Gitalk(props);
   client.onUnauthorized();
   assert.equal(app.storage.get("GT_ACCESS_TOKEN"), "next-token");
+});
+
+test("a cached token's 401 before rerender preserves the freshly exchanged session", () => {
+  const app = loadGitalk();
+  const props = {
+    clientID: "public",
+    proxy: "/oauth/access_token",
+    owner: "owner",
+    repo: "repo",
+    admin: ["owner"],
+  };
+  app.storage.set("GT_ACCESS_TOKEN", "cached-token");
+  app.Gitalk(props);
+  const oldClient = app.clients.at(-1);
+
+  app.requests[0].options.onSuccess("fresh-token");
+  oldClient.onUnauthorized();
+
+  assert.equal(app.storage.get("GT_ACCESS_TOKEN"), "fresh-token");
+  assert.ok(app.requests.every((request) => request.cancelled === 0));
+  app.Gitalk(props);
+  assert.equal(app.clients.at(-1).token, "fresh-token");
+  assert.equal(app.requests[1].options.ready, true);
+
+  app.clients.at(-1).onUnauthorized();
+  assert.equal(app.storage.has("GT_ACCESS_TOKEN"), false);
+  app.Gitalk(props);
+  assert.equal(app.clients.at(-1).token, undefined);
 });
 
 test("invalid callbacks show an error without starting an exchange or storing a token", () => {
