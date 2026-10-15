@@ -1,4 +1,4 @@
-基于 Github 议题和 React 的现代评论组件。
+基于 GitHub Issue 和 React 的现代评论组件。
 
 [ENGLISH](./README.md) | 简体中文
 
@@ -7,9 +7,9 @@
 [![NPM][npm-version-image]][npm-version-url]
 [![gzip-size][gzip-size]][gzip-url]
 
-使用 TypeScript, React 和 Vite 重新实现 [Gitalk](https://github.com/gitalk/gitalk) —— 基于 Github 议题的评论组件。
+使用 TypeScript, React 和 Vite 重新实现 [Gitalk](https://github.com/gitalk/gitalk) —— 基于 Github Issue 的评论组件。
 
-面向现代浏览器开发，专注于减少构建包的体积，提升开发与使用的体验。
+面向现代浏览器开发，致力于减小构建体积，提升开发与使用的体验。
 
 ## 与原版的区别
 
@@ -29,26 +29,47 @@ npm install gitalk-react
 
 ### 使用
 
-在项目中引入 Gitalk React 的样式与组件：
+在项目中引入样式与组件：
 
 ```tsx
-// 引入浅色模式样式
+// 引入浅色样式
 import 'gitalk-react/gitalk.css'
-// 或深色模式样式
-import 'gitalk-react/gitalk-dark.css'
+// 或深色样式
+// import 'gitalk-react/gitalk-dark.css'
 
 import Gitalk from 'gitalk-react'
 ```
 
-Gitalk React 依赖于 Github OAuth App 实现登录鉴权，您需要首先[注册一个应用](https://github.com/settings/applications/new)。请注意，您必须将站点域名作为 `Authorization callback URL` 字段的值，例如 `https://yourdomain.com/site` 或开发环境下的 `http://localhost:5432`。
+Gitalk React 依赖于 Github OAuth App 进行登录认证；您需要首先[注册一个应用](https://github.com/settings/applications/new)。请注意，您必须将站点域名作为 `Authorization callback URL` 字段的值，例如 `https://yourdomain.com/site`，开发环境下则为 `http://localhost:5432`。
 
-使用 Gitalk React 组件，填写必要的配置项：
+通过后端代理服务器进行安全部署，请使用以下配置项：
 
-- `clientId`：Github OAuth App 的 ID。
-- `clientSecret`：Github OAuth App 的 Secret 密钥。
-- `owner`：Github 用户名。
-- `repo`：Github 仓库名。需要是公开的仓库。
-- `admin`：Gitalk React 管理员列表，只有列表里的人可以初始化评论议题。可以是 Github 仓库的拥有者和协作者。
+- `clientID`：您的 GitHub OAuth App ID。
+- `proxy`：后端代理服务器的 URL 端点，用于安全地处理 OAuth 授权码到令牌的交换。详见[部署代理](#部署代理)章节。
+- `owner`：您的 GitHub 用户名。
+- `repo`：您的 GitHub 仓库名称。必须是公开仓库。
+- `admin`：Gitalk React 管理员列表；只有列表中的用户才能初始化评论话题。可以是 Github 仓库的拥有者和协作者。
+
+```tsx
+<Gitalk
+  clientID="YOUR_GITHUB_OAUTH_APP_CLIENT_ID"
+  proxy="https://your-server.com/oauth/access_token"
+  owner="GITHUB_REPO_OWNER"
+  repo="GITHUB_REPO_NAME"
+  admin={['GITHUB_REPO_OWNER', 'GITHUB_REPO_COLLABORATOR']}
+/>
+```
+
+> [!CAUTION]
+> 提供 `clientSecret` 将启用**客户端交换（不安全）模式**，该模式会使用您指定的 CORS 中继或未指定 `proxy` 时的默认中继。此模式会将密钥暴露给访问者和中继服务。若要使用服务端交换，请省略 `clientSecret` 并提供您的后端 `proxy`。
+
+若使用暴露密钥的传统部署方式，请使用以下配置项：
+
+- `clientID`：您的 GitHub OAuth App ID。
+- `clientSecret`：您的 GitHub OAuth App Secret。
+- `owner`：您的 GitHub 用户名。
+- `repo`：您的 GitHub 仓库名称。必须是公开仓库。
+- `admin`：Gitalk React 管理员列表；只有列表中的用户才能初始化评论话题。可以是 Github 仓库的拥有者和协作者。
 
 ```tsx
 <Gitalk
@@ -60,6 +81,28 @@ Gitalk React 依赖于 Github OAuth App 实现登录鉴权，您需要首先[注
 />
 ```
 
+### 仅客户端渲染
+
+Gitalk React 是一个**客户端组件**，**不支持服务端渲染（SSR）**。它在渲染过程中会读取浏览器 API。源码入口及两个发布的 JavaScript 入口均带有 `"use client"` 指令；这标记了 React 客户端边界，但不会禁用 SSR 框架中的预渲染功能。
+
+在 Next.js App Router 中，创建一个客户端包装器并对动态导入禁用 SSR：
+
+```tsx
+'use client'
+
+import dynamic from 'next/dynamic'
+import type { GitalkProps } from 'gitalk-react'
+import 'gitalk-react/gitalk.css'
+
+const Gitalk = dynamic(() => import('gitalk-react'), { ssr: false })
+
+export default function Comments(props: GitalkProps) {
+  return <Gitalk {...props} />
+}
+```
+
+使用上述配置渲染此包装器。其他 SSR 框架也必须确保仅在浏览器端加载和挂载 Gitalk。
+
 ## 配置
 
 ### clientID `string`
@@ -68,7 +111,9 @@ Gitalk React 依赖于 Github OAuth App 实现登录鉴权，您需要首先[注
 
 ### clientSecret `string`
 
-**必填项**。Github OAuth App 的 Secret 密钥。
+您的 GitHub OAuth App Secret。提供此项时，Gitalk 会通过 `proxy` 发送包含授权码、Client ID 和 Secret 的 POST 请求；若省略或留空 `proxy`，则使用 `DEFAULT_PROXY`。此模式会在浏览器和 CORS 中继中暴露密钥。
+
+您应该将 OAuth App Secret 保存在服务端。对于安全部署，请省略 `clientSecret` 并提供服务端 `proxy`。
 
 ### owner `string`
 
@@ -112,7 +157,7 @@ Gitalk React 在创建评论议题时，自动将此参数作为评论议题的�
 
 Gitalk React 使用的语言。
 
-可用的语言包括：`"de" | "en" | "es-ES" | "fa" | "fr" | "ja" | "ko" | "pl" | "ru" | "zh-CN" | "zh-TW"`。
+可用翻译：`ar`、`bn`、`de`、`en`、`es`、`fa`、`fr`、`hi`、`ja`、`ko`、`pl`、`pt`、`ru`、`ur`、`zh-CN` 和 `zh-TW`。诸如 `fr-FR`、`de-DE` 和 `ja-JP` 等 BCP 47 区域标签会选择基础翻译。中文地区和文字标签会保留简体/繁体中文（`zh-Hans` / `zh-Hant`）。不支持或无效的标签将使用英语。相对评论日期使用具有相同解析语言的 `Intl.RelativeTimeFormat`。
 
 ### perPage `number = 10`
 
@@ -120,7 +165,7 @@ Gitalk React 使用的语言。
 
 ### pagerDirection `"last" | "first" = "last"`
 
-评论排序的方式。`last` 表示按评论创建时间倒叙排列，`first` 表示按评论创建时间正叙排列。
+评论排序的方式。`last` 表示按评论创建时间降序排列，`first` 表示按评论创建时间升序排列。
 
 ### createIssueManually `boolean = false`
 
@@ -136,24 +181,11 @@ Gitalk React 使用的语言。
 
 是否启用仿 Facebook 评论框的全屏遮罩效果。
 
-### flipMoveOptions `FlipMove.FlipMoveProps`
+### proxy `string`
 
-评论列表的动画效果。
+当提供 `clientSecret` 时，这是一个可选的 CORS 中继 URL。默认为 `https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token`。您可以选择其他 CORS 服务。Gitalk 会发送包含 code、client ID 和 secret 的 POST 请求；中继服务解决浏览器的跨域限制，同时 GitHub 仍会验证 OAuth 凭证。
 
-默认值，效果[参考](https://github.com/joshwcomeau/react-flip-move/blob/master/documentation/enter_leave_animations.md)：
-
-```json
-{
-  "staggerDelayBy": 150,
-  "appearAnimation": "accordionVertical",
-  "enterAnimation": "accordionVertical",
-  "leaveAnimation": "accordionVertical"
-}
-```
-
-### proxy `string = "https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token"`
-
-Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](https://github.com/isaacs/github/issues/330)
+当省略 `clientSecret` 时，`proxy` 为必填项，且必须指向您的服务端 OAuth 交换端点。Gitalk 仅发送带有授权码（作为编码的 `code` 查询参数）的 GET 请求，并保留现有的查询参数。服务端存储凭证并返回 JSON `{ "access_token": "..." }`。
 
 ### defaultUser `{ avatar_url: string; login: string; html_url: string }`
 
@@ -185,11 +217,11 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 
 创建评论**成功时**调用的回调方法。
 
-## 主题样式
+### 颜色
 
-通过设置 CSS 变量，您可以快速地将 Gitalk React 的主题颜色修改为适配您站点的样式。
+您可以通过设置 CSS 变量快速修改 Gitalk React 的主题颜色，以匹配您的站点风格。
 
-当您引入浅色主题 `import 'gitalk-react/gitalk.css'` 时，默认的 CSS 变量如下：
+当您通过 `import 'gitalk-react/gitalk.css'` 引入浅色主题时，默认 CSS 变量如下：
 
 ```css
 .gt-container {
@@ -218,7 +250,7 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 }
 ```
 
-引入深色主题 `import 'gitalk-react/gitalk-dark.css'` 时，默认的 CSS 变量如下：
+当通过 `import 'gitalk-react/gitalk-dark.css'` 引入深色主题时，默认 CSS 变量如下：
 
 ```css
 .gt-container {
@@ -247,9 +279,25 @@ Github OAuth App 鉴权反向代理，支持 CORS。[为什么需要它？](http
 }
 ```
 
-## 开发者
+### 动画
 
-在项目根目录新建 `.env.local` 文件，添加开发用环境变量如下：
+评论的进入和退出使用原生 CSS 手风琴/淡入淡出动画，重新排序时使用 CSS transform 过渡。动画持续时间为 0.3 秒，并遵循 `prefers-reduced-motion` 偏好设置。动画库选项和默认选项导出已被移除；请在 CSS 中自定义 `.gt-comment-item`。
+
+## 代理部署
+
+[内置的 Node 代理](./proxy-server/README.md)需要 Node.js 22 或更高版本，无需额外安装包。将 `proxy-server/.env.example` 复制为 `proxy-server/.env.local`，然后在服务器上设置 `GITHUB_CLIENT_ID`、`GITHUB_CLIENT_SECRET` 和 `ALLOWED_ORIGIN`。Origin 必须与你的站点源完全匹配，不包含路径或尾部斜杠。
+
+```bash
+npm run start:proxy
+```
+
+本地开发时使用 `http://localhost:3000/oauth/access_token`。在生产环境中，应将代理置于 HTTPS 之后，并将组件的 `proxy` 设置为其公共端点。请禁用该端点的查询字符串日志记录和缓存，因为其 URL 包含一次性授权码。浏览器端的 `clientID` 必须与服务端的 OAuth App 一致。
+
+预览环境专门使用这种服务端模式。本地 Vite 开发会将 `/oauth/access_token` 转发到本地代理。对于静态预览部署，请在构建前将 `VITE_PROXY` 设置为已部署的 HTTPS 端点；GitHub Pages 无法托管 Node 代理。
+
+## 开发者指南
+
+在项目根目录新建 `.env.local` 文件，并添加如下开发环境变量：
 
 ```bash
 VITE_CLIENT_ID="YOUR_GITHUB_OAUTH_APP_CLIENT_ID"
@@ -261,10 +309,22 @@ VITE_ADMIN='["YOUR_GITHUB_USERNAME"]'
 
 ### 开发
 
+安装依赖：
+
+```bash
+yarn
+```
+
 在浏览器中调试开发：
 
 ```bash
 yarn dev
+```
+
+运行测试：
+
+```bash
+yarn test
 ```
 
 ### 质量检查
@@ -277,7 +337,7 @@ yarn lint
 
 ### 构建
 
-打包构建组件：
+打包并构建组件：
 
 ```bash
 yarn build
@@ -285,10 +345,11 @@ yarn build
 
 ## 开发中的功能
 
-- [ ] Feature: 支持在 Gitalk React 编辑自己发表的评论。
-- [x] Feature: 支持折叠过长的评论，允许点击展开该评论。
-- [ ] test: 添加自动化测试流程。提升项目的健壮性。
-- [x] chore: 部署[预览环境](https://lolipopj.github.io/gitalk-react/)。
+- [ ] 特性：支持在 Gitalk React 中编辑用户自己发布的评论。
+- [x] 特性：支持折叠过长的评论，允许用户点击展开。
+- [x] 重构：逐步移除非必要第三方库的依赖，以减小构建体积。
+- [x] 测试：添加自动化测试流程，增强项目健壮性。
+- [x] 杂项：部署[预览环境](https://lolipopj.github.io/gitalk-react/)。
 
 ## 许可证
 

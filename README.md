@@ -42,10 +42,10 @@ import Gitalk from 'gitalk-react'
 
 Gitalk React relies on GitHub OAuth App for login authentication; you need to first [register an application](https://github.com/settings/applications/new). Please note that you must set your site domain as the value of the `Authorization callback URL` field, such as `https://yourdomain.com/site` or for development environments `http://localhost:5432`.
 
-When using the Gitalk React component, fill in the necessary configuration items:
+For a secure deployment with your backend proxy server, use the following configuration items:
 
 - `clientID`: The ID of your GitHub OAuth App.
-- `proxy`: Your server-side OAuth exchange endpoint. See [Proxy Deployment](#proxy-deployment).
+- `proxy`: The URL endpoint of your backend proxy server which securely handles the OAuth authorization code-to-token exchange. See [Proxy Deployment](#proxy-deployment).
 - `owner`: Your GitHub username.
 - `repo`: The name of your GitHub repository. It must be a public repository.
 - `admin`: A list of Gitalk React administrators; only those listed can initialize comment topics. This can include the owner and collaborators of the GitHub repository.
@@ -61,14 +61,12 @@ When using the Gitalk React component, fill in the necessary configuration items
 ```
 
 > [!CAUTION]
-> Keep your OAuth App secret on the server. Browser code and `VITE_*` environment variables are public. Rotate the secrets previously included in the preview source in your GitHub OAuth App settings; removing them from the current source does not remove published assets or Git history.
->
-> Providing `clientSecret` selects the client-side exchange mode, using your chosen CORS relay or the default relay when `proxy` is omitted. That mode exposes the secret to visitors and the relay. For server-side exchange, omit `clientSecret` and provide your backend `proxy`.
+> Providing `clientSecret` selects the **client-side exchange (UNSAFE) mode**, using your chosen CORS relay or the default relay when `proxy` is omitted. That mode exposes the secret to visitors and the relay. For server-side exchange, omit `clientSecret` and provide your backend `proxy`.
 
-For a secure deployment with your backend proxy server, use the following configuration items:
+For a legacy deployment with exposed secret key, use the following configuration items:
 
 - `clientID`: The ID of your GitHub OAuth App.
-- `proxy`: The URL endpoint of your backend proxy server which securely handles the OAuth authorization code-to-token exchange.
+- `clientSecret`: The Secret key of your GitHub OAuth App.
 - `owner`: Your GitHub username.
 - `repo`: The name of your GitHub repository. It must be a public repository.
 - `admin`: A list of Gitalk React administrators; only those listed can initialize comment topics. This can include the owner and collaborators of the GitHub repository.
@@ -76,7 +74,7 @@ For a secure deployment with your backend proxy server, use the following config
 ```tsx
 <Gitalk
   clientID="YOUR_GITHUB_OAUTH_APP_CLIENT_ID"
-  proxy="https://your-server.com/oauth/access_token"
+  clientSecret="YOUR_GITHUB_OAUTH_APP_CLIENT_SECRET"
   owner="GITHUB_REPO_OWNER"
   repo="GITHUB_REPO_NAME"
   admin={['GITHUB_REPO_OWNER', 'GITHUB_REPO_COLLABORATOR']}
@@ -187,7 +185,7 @@ Whether to enable full-screen overlay effects similar to Facebook's comment box.
 
 When `clientSecret` is provided, this is an optional CORS relay URL. It defaults to `https://cors-anywhere.azm.workers.dev/https://github.com/login/oauth/access_token`. You can select another CORS service. Gitalk sends a POST request containing the code, client ID and secret; the relay solves the browser's cross-origin restriction while GitHub still validates the OAuth credentials.
 
-When `clientSecret` is omitted, `proxy` is required and must point to your server-side OAuth exchange endpoint. Gitalk sends a GET request with only the authorization code as an encoded `code` query parameter, preserving existing query parameters. The server stores the credentials and returns JSON `{ "access_token": "..." }`. A failed exchange does not switch modes.
+When `clientSecret` is omitted, `proxy` is required and must point to your server-side OAuth exchange endpoint. Gitalk sends a GET request with only the authorization code as an encoded `code` query parameter, preserving existing query parameters. The server stores the credentials and returns JSON `{ "access_token": "..." }`.
 
 ### defaultUser `{ avatar_url: string; login: string; html_url: string }`
 
@@ -219,9 +217,9 @@ Callback method invoked when updating the number of comments.
 
 Callback method invoked when a comment is successfully created.
 
-## Theming
+## Theme
 
-### Colors
+### Color
 
 You can quickly modify Gitalk React's theme colors to match your site's style by setting CSS variables.
 
@@ -351,8 +349,8 @@ yarn build
 
 - [ ] Feature: Support editing comments published by the user in Gitalk React.
 - [x] Feature: Support collapse overly long comments, allowing users to click to expand the comment.
-- [ ] refactor: Gradually remove dependencies on non-essential third-party libraries to reduce build size.
-- [ ] test: Add automated testing processes to enhance project robustness.
+- [x] refactor: Gradually remove dependencies on non-essential third-party libraries to reduce build size.
+- [x] test: Add automated testing processes to enhance project robustness.
 - [x] chore: Deploy [preview environment](https://lolipopj.github.io/gitalk-react/).
 
 ## License

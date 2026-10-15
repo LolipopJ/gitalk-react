@@ -1,9 +1,17 @@
-# https://vite.dev/guide/static-deploy.html#github-pages
+# docs: https://vite.dev/guide/static-deploy.html#github-pages
+# site: https://lolipopj.github.io/gitalk-react
 name: Deploy preview page
 
 on:
   push:
     branches: ['main']
+    paths:
+      - 'dev/**'
+      - 'lib/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'vite.config.*'
+      - '.github/workflows/deployment.yml'
 
   workflow_dispatch:
 
@@ -21,9 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: 'yarn'
@@ -32,11 +40,11 @@ jobs:
       - name: Build
         run: yarn build:preview
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v6
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: './out'
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
