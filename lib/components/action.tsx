@@ -2,8 +2,8 @@ import cn from "classnames";
 import React from "react";
 
 export interface ActionProps extends React.DetailedHTMLProps<
-  React.AnchorHTMLAttributes<HTMLAnchorElement>,
-  HTMLAnchorElement
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  HTMLButtonElement
 > {
   text: string;
 }
@@ -11,11 +11,12 @@ export interface ActionProps extends React.DetailedHTMLProps<
 const Action: React.FC<ActionProps> = ({
   text,
   className = "",
+  type = "button",
   ...restProps
 }) => (
-  <a className={cn("gt-action", className)} {...restProps}>
+  <button type={type} className={cn("gt-action", className)} {...restProps}>
     <span className="gt-action-text">{text}</span>
-  </a>
+  </button>
 );
 
 export default Action;

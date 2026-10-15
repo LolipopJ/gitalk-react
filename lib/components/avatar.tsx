@@ -19,7 +19,8 @@ const Avatar: React.FC<AvatarProps> = ({
   className = "",
   ...restProps
 }) => {
-  const [imgSrc, setImgSrc] = useState<string>(src ?? defaultSrc);
+  const [failedSrc, setFailedSrc] = useState<string>();
+  const imgSrc = src === failedSrc ? defaultSrc : (src ?? defaultSrc);
 
   return (
     <a
@@ -32,7 +33,7 @@ const Avatar: React.FC<AvatarProps> = ({
         src={imgSrc}
         alt={`@${alt}`}
         onError={() => {
-          setImgSrc(defaultSrc);
+          setFailedSrc(src);
         }}
       />
     </a>

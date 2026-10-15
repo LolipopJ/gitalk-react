@@ -13,6 +13,7 @@ const Button: React.FC<ButtonProps> = ({
   text,
   isLoading = false,
   className = "",
+  type = "button",
   style,
   disabled: propsDisabled,
   ...restProps
@@ -21,6 +22,7 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
+      type={type}
       className={cn("gt-btn", className)}
       style={{ cursor: disabled ? "not-allowed" : undefined, ...style }}
       disabled={disabled}

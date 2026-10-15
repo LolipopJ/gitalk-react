@@ -117,7 +117,16 @@ $gt-breakpoint-mobile: 480px;
     }
   }
 
-  a {
+  button {
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+  }
+
+  a,
+  button {
     color: var(--gt-color-main);
 
     &:hover {
@@ -137,6 +146,13 @@ $gt-breakpoint-mobile: 480px;
 
   .hide {
     display: none;
+  }
+
+  a:focus-visible,
+  button:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--gt-color-main);
+    outline-offset: 2px;
   }
 
   .gt {

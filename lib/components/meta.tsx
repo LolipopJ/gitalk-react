@@ -1,11 +1,10 @@
 import cn from "classnames";
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 
 import ArrowDown from "../assets/arrow-down.svg?raw";
 import { HOMEPAGE, VERSION } from "../constants";
 import I18nContext from "../contexts/I18nContext";
 import type { GitalkProps, Issue, User } from "../interfaces";
-import { hasClassInParent } from "../utils/dom";
 import Action from "./action";
 import Svg from "./svg";
 
@@ -35,31 +34,38 @@ const Meta: React.FC<MetaProps> = (props) => {
 
   const [showPopup, setShowPopup] = useState<boolean>(false);
 
-  function hidePopup(e: MouseEvent) {
-    const target = e.target as HTMLElement;
-    if (target && hasClassInParent(target, "gt-user", "gt-popup")) {
-      return;
-    }
-    document.removeEventListener("click", hidePopup);
-    setShowPopup(false);
-  }
+  const popupRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const onShowOrHidePopup: React.MouseEventHandler<HTMLDivElement> = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  useEffect(() => {
+    if (!showPopup) return;
 
-    setShowPopup((visible) => {
-      if (visible) {
-        document.removeEventListener("click", hidePopup);
-      } else {
-        document.addEventListener("click", hidePopup);
+    const hidePopup = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        !popupRef.current?.contains(target) &&
+        !triggerRef.current?.contains(target)
+      ) {
+        setShowPopup(false);
       }
-      return !visible;
-    });
-  };
+    };
+
+    document.addEventListener("click", hidePopup);
+    return () => document.removeEventListener("click", hidePopup);
+  }, [showPopup]);
 
   return (
-    <div className="gt-meta" key="meta">
+    <div
+      className="gt-meta"
+      key="meta"
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && showPopup) {
+          event.preventDefault();
+          setShowPopup(false);
+          triggerRef.current?.focus();
+        }
+      }}
+    >
       <span
         className="gt-counts"
         dangerouslySetInnerHTML={{
@@ -70,7 +76,7 @@ const Meta: React.FC<MetaProps> = (props) => {
         }}
       />
       {showPopup && (
-        <div className="gt-popup">
+        <div className="gt-popup" ref={popupRef}>
           {user
             ? [
                 <Action
@@ -98,9 +104,13 @@ const Meta: React.FC<MetaProps> = (props) => {
               text={polyglot.t("logout")}
             />
           ) : (
-            <a className="gt-action gt-action-login" onClick={onLogin}>
+            <button
+              type="button"
+              className="gt-action gt-action-login"
+              onClick={onLogin}
+            >
               {polyglot.t("login-with-github")}
-            </a>
+            </button>
           )}
           <div className="gt-copyright">
             <a
@@ -116,15 +126,18 @@ const Meta: React.FC<MetaProps> = (props) => {
         </div>
       )}
       <div className="gt-user">
-        <div
+        <button
+          type="button"
+          ref={triggerRef}
+          aria-expanded={showPopup}
           className={cn("gt-user-inner", { "is--poping": showPopup })}
-          onClick={onShowOrHidePopup}
+          onClick={() => setShowPopup((visible) => !visible)}
         >
           <span className="gt-user-name">
             {user?.login ?? polyglot.t("anonymous")}
           </span>
           <Svg className="gt-ico-arrdown" icon={ArrowDown} />
-        </div>
+        </button>
       </div>
     </div>
   );

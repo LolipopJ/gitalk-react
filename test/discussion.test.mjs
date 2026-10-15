@@ -97,7 +97,7 @@ const mountGitalk = ({ authenticated = false, ...initialProps } = {}) => {
     },
     graphql: (query, params) =>
       new Promise((resolve, reject) => {
-        calls.push({ route: "graphql", params, resolve, reject });
+        calls.push({ route: "graphql", query, params, resolve, reject });
       }),
   };
   const storage = new Map(authenticated ? [["GT_ACCESS_TOKEN", "token"]] : []);
@@ -186,8 +186,18 @@ const mountGitalk = ({ authenticated = false, ...initialProps } = {}) => {
     if (name === "./services/request") {
       return { __esModule: true, default: () => octokit };
     }
-    if (name === "./services/graphql/comment")
-      return { getIssueCommentsQL: () => "query" };
+    if (name === "./services/graphql/comment") {
+      const graphqlSource = readFileSync(
+        new URL("../lib/services/graphql/comment.ts", import.meta.url),
+        "utf8",
+      );
+      const { outputText } = ts.transpileModule(graphqlSource, {
+        compilerOptions: { module: ts.ModuleKind.CommonJS },
+      });
+      const exports = {};
+      vm.runInNewContext(outputText, { exports });
+      return exports;
+    }
     if (name === "./contexts/I18nContext") {
       return { __esModule: true, default: { Provider: "provider" } };
     }
@@ -267,14 +277,416 @@ const issueResponse = (number) => ({
   status: 200,
   data: { number, comments: 3 },
 });
-const openArticle = async (options) => {
+const openArticle = async ({ issueComments = 3, ...options } = {}) => {
   const app = mountGitalk(options);
   await app.settle();
-  app.calls.find((call) => call.route === issueRoute).resolve(issueResponse(1));
+  app.calls
+    .findLast((call) => call.route === issueRoute)
+    .resolve({
+      ...issueResponse(1),
+      data: { ...issueResponse(1).data, comments: issueComments },
+    });
   await app.settle();
   return app;
 };
 const hotkey = () => ({ ctrlKey: true, keyCode: 13, preventDefault() {} });
+
+test("the rendered load-more control follows pagination metadata, independent of totals", () => {
+  const source = readFileSync(
+    new URL("../lib/components/comments-list.tsx", import.meta.url),
+    "utf8",
+  );
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React },
+  });
+  const react = {
+    createElement: (type, props, ...children) => ({ type, props, children }),
+    useContext: () => ({ polyglot: { t: (key) => key } }),
+  };
+  const exports = {};
+  vm.runInNewContext(outputText, {
+    exports,
+    require: (name) =>
+      name === "react"
+        ? { __esModule: true, default: react, ...react }
+        : { __esModule: true, default: name },
+  });
+  for (const [commentsCount, hasMoreComments] of [
+    [0, true],
+    [50, false],
+  ]) {
+    const rendered = exports.default({
+      comments: [],
+      commentsCount,
+      hasMoreComments,
+      admin: [],
+    });
+    assert.equal(
+      rendered.children.some(
+        (child) => child?.props?.className === "gt-comments-controls",
+      ),
+      hasMoreComments,
+    );
+  }
+});
+
+const commentPage = ({
+  author = null,
+  count = 1,
+  hasMore = false,
+  reacted = false,
+  hearts = 0,
+} = {}) => ({
+  repository: {
+    issue: {
+      comments: {
+        totalCount: count,
+        nodes: [
+          {
+            id: "IC_comment",
+            databaseId: 9007199254740993n,
+            author,
+            reactions: { totalCount: hearts, viewerHasReacted: reacted },
+          },
+        ],
+        pageInfo: {
+          startCursor: "start",
+          endCursor: "end",
+          hasPreviousPage: hasMore,
+          hasNextPage: hasMore,
+        },
+      },
+    },
+  },
+});
+
+test("a deleted GraphQL author uses the configured user without losing the page", async () => {
+  const defaultUser = { login: "deleted", avatar_url: "avatar", html_url: "" };
+  const app = await openArticle({ authenticated: true, defaultUser });
+  app.calls.find((call) => call.route === "graphql").resolve(commentPage());
+  await app.settle();
+  const list = app.component("comments-list");
+  assert.equal(list.comments.length, 1);
+  assert.equal(list.comments[0].id, 9007199254740993n);
+  assert.deepEqual({ ...list.comments[0].user }, defaultUser);
+  app.unmount();
+});
+
+test("a deleted REST author uses the configured user inside the user field", async () => {
+  const defaultUser = { login: "deleted", avatar_url: "avatar", html_url: "" };
+  const app = await openArticle({ defaultUser });
+  app.calls
+    .find((call) => call.route === commentsRoute)
+    .resolve({
+      status: 200,
+      headers: {},
+      data: [{ id: 1, user: null }],
+    });
+  await app.settle();
+  assert.deepEqual(
+    { ...app.component("comments-list").comments[0].user },
+    defaultUser,
+  );
+  app.unmount();
+});
+
+for (const perPage of [0, -1, 1.5, NaN, Infinity, -Infinity]) {
+  test(`invalid page size ${perPage} requests a valid default page`, async () => {
+    const app = await openArticle({ authenticated: true, perPage });
+    assert.equal(
+      app.calls.find((call) => call.route === "graphql").params.pageSize,
+      10,
+    );
+    app.unmount();
+  });
+}
+
+for (const [perPage, expected] of [
+  [1, 1],
+  [100, 100],
+  [101, 100],
+]) {
+  test(`page size ${perPage} requests ${expected} comments`, async () => {
+    const app = await openArticle({ perPage });
+    assert.equal(
+      app.calls.find((call) => call.route === commentsRoute).params.per_page,
+      expected,
+    );
+    app.unmount();
+  });
+}
+
+test("changing page size restarts pagination with the new size", async () => {
+  const app = await openArticle({ authenticated: true });
+  app.calls
+    .find((call) => call.route === "graphql")
+    .resolve(commentPage({ hasMore: true }));
+  await app.settle();
+  app.switchArticle({ perPage: 20 });
+  await app.settle();
+  const next = app.calls.filter((call) => call.route === "graphql").at(-1);
+  assert.equal(next.params.pageSize, 20);
+  assert.equal(next.params.cursor, undefined);
+  assert.equal(app.component("comments-list").comments.length, 0);
+  app.unmount();
+});
+
+for (const pagerDirection of ["first", "last"]) {
+  test(`GraphQL ${pagerDirection} pagination follows server metadata and current total`, async () => {
+    const app = await openArticle({ authenticated: true, pagerDirection });
+    app.calls
+      .find((call) => call.route === "graphql")
+      .resolve(commentPage({ count: 20, hasMore: true }));
+    await app.settle();
+    assert.equal(app.component("comments-list").hasMoreComments, true);
+    assert.equal(app.component("comments-list").commentsCount, 20);
+    app.component("comments-list").onGetComments();
+    const next = app.calls.filter((call) => call.route === "graphql").at(-1);
+    assert.equal(
+      next.params.cursor,
+      pagerDirection === "last" ? "start" : "end",
+    );
+    next.resolve(commentPage({ count: 1 }));
+    await app.settle();
+    assert.equal(app.component("comments-list").hasMoreComments, false);
+    assert.equal(app.component("comments-list").commentsCount, 1);
+    app.unmount();
+  });
+}
+
+for (const issueComments of [0, 50]) {
+  test(`REST pagination follows next links when the initial count is ${issueComments}`, async () => {
+    const app = await openArticle({ issueComments });
+    app.calls
+      .find((call) => call.route === commentsRoute)
+      .resolve({
+        status: 200,
+        headers: {
+          link: '<https://api.github.com/comments?page=2>; rel="next", <https://api.github.com/comments?page=2>; rel="last"',
+        },
+        data: [{ id: 1 }],
+      });
+    await app.settle();
+    assert.equal(app.component("comments-list").hasMoreComments, true);
+    app.component("comments-list").onGetComments();
+    app.calls
+      .filter((call) => call.route === commentsRoute)
+      .at(-1)
+      .resolve({ status: 200, headers: {}, data: [] });
+    await app.settle();
+    assert.equal(app.component("comments-list").hasMoreComments, false);
+    app.unmount();
+  });
+}
+
+for (const [like, hearts] of [
+  [true, 1],
+  [false, 150],
+]) {
+  test(`${like ? "an already existing heart stays idempotent" : "a heart beyond the first 100 can be removed"}`, async () => {
+    const app = await openArticle({ authenticated: true });
+    app.calls
+      .find((call) => call.route === "graphql")
+      .resolve(commentPage({ reacted: !like, hearts }));
+    await app.settle();
+    app.component("comments-list").onLike(like, 9007199254740993n);
+    const mutation = app.calls
+      .filter((call) => call.route === "graphql")
+      .at(-1);
+    assert.equal(mutation.params.subjectId, "IC_comment");
+    assert.match(
+      mutation.query,
+      new RegExp(like ? "addReaction" : "removeReaction"),
+    );
+    mutation.resolve({
+      reaction: {
+        subject: { reactions: { totalCount: hearts, viewerHasReacted: like } },
+      },
+    });
+    await app.settle();
+    const comment = app.component("comments-list").comments[0];
+    assert.equal(comment.reactions.heart, hearts);
+    assert.equal(comment.reactionsHeart.viewerHasReacted, like);
+    assert.equal(app.component("comments-list").likeLoading, false);
+    app.unmount();
+  });
+}
+
+for (const pagerDirection of ["first", "last"]) {
+  test(`a later ${pagerDirection} page preserves a reaction completed while loading`, async () => {
+    const app = await openArticle({ authenticated: true, pagerDirection });
+    app.calls
+      .find((call) => call.route === "graphql")
+      .resolve(commentPage({ hasMore: true }));
+    await app.settle();
+    app.component("comments-list").onLike(true, 9007199254740993n);
+    const mutation = app.calls
+      .filter((call) => call.route === "graphql")
+      .at(-1);
+    app.component("comments-list").onGetComments();
+    const pendingPage = app.calls
+      .filter((call) => call.route === "graphql")
+      .at(-1);
+    mutation.resolve({
+      reaction: {
+        subject: { reactions: { totalCount: 1, viewerHasReacted: true } },
+      },
+    });
+    await app.settle();
+    assert.equal(app.component("comments-list").comments[0].reactions.heart, 1);
+    const nextPage = commentPage({ count: 2 });
+    nextPage.repository.issue.comments.nodes[0].id = "IC_second";
+    nextPage.repository.issue.comments.nodes[0].databaseId = 9007199254740994n;
+    pendingPage.resolve(nextPage);
+    await app.settle();
+    const list = app.component("comments-list");
+    assert.deepEqual(
+      Array.from(list.comments, (comment) => comment.id),
+      [9007199254740993n, 9007199254740994n],
+    );
+    assert.equal(list.comments[0].reactions.heart, 1);
+    assert.equal(list.comments[0].reactionsHeart.viewerHasReacted, true);
+    app.unmount();
+  });
+}
+
+test("a page started before submission cannot lower the new comment count", async () => {
+  const app = await openArticle({ authenticated: true, perPage: 1 });
+  app.calls
+    .find((call) => call.route === "graphql")
+    .resolve(commentPage({ count: 2, hasMore: true }));
+  await app.settle();
+  app.component("comments-list").onGetComments();
+  const pendingPage = app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1);
+  app.type("new comment");
+  const submission = app.component("comment-textarea").onCreateComment();
+  app.calls
+    .find((call) => call.route === submitRoute)
+    .resolve({ status: 201, data: { id: 30, node_id: "IC_local" } });
+  await submission;
+  await app.settle();
+  assert.equal(app.component("comments-list").commentsCount, 3);
+  const nextPage = commentPage({ count: 2 });
+  nextPage.repository.issue.comments.nodes[0].id = "IC_second";
+  nextPage.repository.issue.comments.nodes[0].databaseId = 9007199254740994n;
+  pendingPage.resolve(nextPage);
+  await app.settle();
+  assert.equal(app.component("comments-list").comments.length, 3);
+  assert.equal(app.component("comments-list").commentsCount, 3);
+  app.unmount();
+});
+
+test("a fresh total after a local submission can reflect server deletions", async () => {
+  const app = await openArticle({ authenticated: true, perPage: 1 });
+  app.calls
+    .find((call) => call.route === "graphql")
+    .resolve(commentPage({ count: 20, hasMore: true }));
+  await app.settle();
+  app.type("new comment");
+  const submission = app.component("comment-textarea").onCreateComment();
+  app.calls
+    .find((call) => call.route === submitRoute)
+    .resolve({ status: 201, data: { id: 30, node_id: "IC_local" } });
+  await submission;
+  await app.settle();
+  assert.equal(app.component("comments-list").commentsCount, 21);
+  app.component("comments-list").onGetComments();
+  const nextPage = commentPage({ count: 2 });
+  nextPage.repository.issue.comments.nodes = [];
+  app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1)
+    .resolve(nextPage);
+  await app.settle();
+  assert.equal(app.component("comments-list").commentsCount, 2);
+  app.unmount();
+});
+
+test("failed pages preserve the loaded comments and can be retried", async () => {
+  const app = await openArticle({ authenticated: true });
+  app.calls
+    .find((call) => call.route === "graphql")
+    .resolve(commentPage({ hasMore: true }));
+  await app.settle();
+  app.component("comments-list").onGetComments();
+  app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1)
+    .reject(new Error("offline"));
+  await app.settle();
+  assert.equal(app.component("comments-list").comments.length, 1);
+  assert.equal(app.component("comments-list").getCommentsLoading, false);
+  assert.equal(app.component("comments-list").hasMoreComments, true);
+  app.component("comments-list").onGetComments();
+  app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1)
+    .resolve(commentPage());
+  await app.settle();
+  assert.equal(app.component("comments-list").hasMoreComments, false);
+  app.unmount();
+});
+
+test("failed reactions preserve the count and release loading for a retry", async () => {
+  const app = await openArticle({ authenticated: true });
+  app.calls
+    .find((call) => call.route === "graphql")
+    .resolve(commentPage({ hearts: 150, reacted: true }));
+  await app.settle();
+  app.component("comments-list").onLike(false, 9007199254740993n);
+  app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1)
+    .reject(new Error("offline"));
+  await app.settle();
+  assert.equal(app.component("comments-list").comments[0].reactions.heart, 150);
+  assert.equal(app.component("comments-list").likeLoading, false);
+  app.component("comments-list").onLike(false, 9007199254740993n);
+  app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1)
+    .resolve({
+      reaction: {
+        subject: { reactions: { totalCount: 149, viewerHasReacted: false } },
+      },
+    });
+  await app.settle();
+  assert.equal(app.component("comments-list").comments[0].reactions.heart, 149);
+  app.unmount();
+});
+
+test("switching articles cancels an old pending reaction", async () => {
+  const app = await openArticle({ authenticated: true });
+  app.calls.find((call) => call.route === "graphql").resolve(commentPage());
+  await app.settle();
+  app.component("comments-list").onLike(true, 9007199254740993n);
+  const oldReaction = app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1);
+  app.switchArticle({ number: 2 });
+  app.calls
+    .findLast(
+      (call) => call.route === issueRoute && call.params.issue_number === 2,
+    )
+    .resolve(issueResponse(2));
+  await app.settle();
+  app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1)
+    .resolve(commentPage({ hearts: 7 }));
+  await app.settle();
+  oldReaction.resolve({
+    reaction: {
+      subject: { reactions: { totalCount: 1, viewerHasReacted: true } },
+    },
+  });
+  await app.settle();
+  assert.equal(app.component("comments-list").comments[0].reactions.heart, 7);
+  assert.equal(app.component("comments-list").likeLoading, false);
+  app.unmount();
+});
 
 for (const next of [
   { owner: "another-owner" },
@@ -324,7 +736,9 @@ test("scope changes cancel old responses before passive effects run", async () =
   assert.equal(app.component("comments-list"), undefined);
   await app.settle();
   app.calls
-    .find((call) => call.route === issueRoute && call.params.issue_number === 2)
+    .findLast(
+      (call) => call.route === issueRoute && call.params.issue_number === 2,
+    )
     .resolve(issueResponse(2));
   await app.settle();
   assert.deepEqual(
@@ -341,7 +755,9 @@ test("an old REST page cannot change the new article's comments or page", async 
   const oldPage = app.calls.find((call) => call.route === commentsRoute);
   app.switchArticle({ number: 2 });
   app.calls
-    .find((call) => call.route === issueRoute && call.params.issue_number === 2)
+    .findLast(
+      (call) => call.route === issueRoute && call.params.issue_number === 2,
+    )
     .resolve(issueResponse(2));
   await app.settle();
   const newPage = app.calls.find(
@@ -414,7 +830,9 @@ test("an old GraphQL page cannot overwrite the new article's cursor", async () =
   const oldPage = app.calls.find((call) => call.route === "graphql");
   app.switchArticle({ number: 2 });
   app.calls
-    .find((call) => call.route === issueRoute && call.params.issue_number === 2)
+    .findLast(
+      (call) => call.route === issueRoute && call.params.issue_number === 2,
+    )
     .resolve(issueResponse(2));
   await app.settle();
   app.calls
@@ -482,7 +900,9 @@ test("a submission for the old article cannot modify the new article", async () 
   const pending = app.component("comment-textarea").onCreateComment();
   app.switchArticle({ number: 2 });
   app.calls
-    .find((call) => call.route === issueRoute && call.params.issue_number === 2)
+    .findLast(
+      (call) => call.route === issueRoute && call.params.issue_number === 2,
+    )
     .resolve(issueResponse(2));
   await app.settle();
   app.type("new draft");
@@ -506,7 +926,7 @@ test("an old issue creation cannot initialize the new article", async () => {
   await app.settle();
   const listRoute = "GET /repos/{owner}/{repo}/issues";
   app.calls
-    .find((call) => call.route === listRoute)
+    .findLast((call) => call.route === listRoute)
     .resolve({ status: 200, data: [] });
   await app.settle();
   const creation = app.calls.find(
@@ -537,7 +957,9 @@ test("a late old submission cannot release a new article's submission lock", asy
   const oldSubmission = app.calls.find((call) => call.route === submitRoute);
   app.switchArticle({ number: 2 });
   app.calls
-    .find((call) => call.route === issueRoute && call.params.issue_number === 2)
+    .findLast(
+      (call) => call.route === issueRoute && call.params.issue_number === 2,
+    )
     .resolve(issueResponse(2));
   await app.settle();
   app.type("new draft");

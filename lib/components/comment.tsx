@@ -142,7 +142,11 @@ const Comment: React.FC<CommentProps> = ({
             </span>
           </div>
           <div className="gt-comment-actions">
-            <a
+            <button
+              type="button"
+              aria-label="Like"
+              aria-pressed={reactionsHeart?.viewerHasReacted ?? false}
+              disabled={likeLoading}
               className="gt-comment-like"
               title="Like"
               onClick={() => {
@@ -155,7 +159,7 @@ const Comment: React.FC<CommentProps> = ({
                 icon={reactionsHeart?.viewerHasReacted ? HeartFilled : Heart}
                 text={reactionsHeartCountText}
               />
-            </a>
+            </button>
             {isAuthor && (
               // TODO: 支持在 Gitalk 里编辑
               <a
@@ -168,13 +172,15 @@ const Comment: React.FC<CommentProps> = ({
                 <Svg className="gt-ico-edit" icon={Edit} />
               </a>
             )}
-            <a
+            <button
+              type="button"
+              aria-label="Reply"
               className="gt-comment-reply"
               title="Reply"
               onClick={() => onReply(comment)}
             >
               <Svg className="gt-ico-reply" icon={Reply} />
-            </a>
+            </button>
           </div>
         </div>
         <div
@@ -184,12 +190,14 @@ const Comment: React.FC<CommentProps> = ({
           }}
         />
         {collapsed && (
-          <div
+          <button
+            type="button"
+            aria-label="Expand comment"
             className="gt-comment-collapse"
             onClick={() => setCollapsed(false)}
           >
             <Svg className="gt-ico-collapse" icon={ArrowDown} />
-          </div>
+          </button>
         )}
       </div>
     </div>

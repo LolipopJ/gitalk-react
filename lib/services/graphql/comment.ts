@@ -11,21 +11,25 @@ export interface IssueCommentsQLResponse {
           startCursor?: string;
           endCursor?: string;
         };
-        nodes: (Pick<Comment, "body"> & {
-          databaseId: Comment["id"];
-          author: {
-            avatarUrl: Comment["user"]["avatar_url"];
-            login: Comment["user"]["login"];
-            url: Comment["user"]["html_url"];
-          };
-          bodyHTML: Comment["body_html"];
-          createdAt: Comment["created_at"];
-          resourcePath: Comment["html_url"];
-          reactions: Comment["reactionsHeart"];
-        })[];
+        nodes: (
+          | (Pick<Comment, "body"> & {
+              id: Comment["node_id"];
+              databaseId: Comment["id"];
+              author: {
+                avatarUrl: Comment["user"]["avatar_url"];
+                login: Comment["user"]["login"];
+                url: Comment["user"]["html_url"];
+              } | null;
+              bodyHTML: Comment["body_html"];
+              createdAt: Comment["created_at"];
+              resourcePath: Comment["html_url"];
+              reactions: Comment["reactionsHeart"];
+            })
+          | null
+        )[];
       };
-    };
-  };
+    } | null;
+  } | null;
 }
 
 export const getIssueCommentsQL = ({
@@ -52,6 +56,7 @@ export const getIssueCommentsQL = ({
             ${cursorDirection === "before" ? "startCursor" : "endCursor"}
           }
           nodes {
+            id
             databaseId
             author {
               avatarUrl
@@ -62,18 +67,9 @@ export const getIssueCommentsQL = ({
             bodyHTML
             createdAt
             resourcePath
-            reactions(first: 100, content: HEART) {
+            reactions(first: 1, content: HEART) {
               totalCount
               viewerHasReacted
-              pageInfo {
-                hasNextPage
-              }
-              nodes {
-                databaseId
-                user {
-                  login
-                }
-              }
             }
           }
         }
@@ -82,3 +78,16 @@ export const getIssueCommentsQL = ({
   }
   `;
 };
+
+export const getCommentReactionMutationQL = (like: boolean): string => `
+mutation setCommentHeart($subjectId: ID!) {
+  reaction: ${like ? "addReaction" : "removeReaction"}(input: {subjectId: $subjectId, content: HEART}) {
+    subject {
+      reactions(first: 1, content: HEART) {
+        totalCount
+        viewerHasReacted
+      }
+    }
+  }
+}
+`;

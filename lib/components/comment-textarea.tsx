@@ -56,19 +56,15 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
           text: inputComment,
         });
 
-        if (getPreviewedHtmlRes.status === 200) {
-          prevInputCommentRef.current = inputComment;
+        prevInputCommentRef.current = inputComment;
 
-          const _commentHtml = getPreviewedHtmlRes.data;
-          prevCommentHtmlRef.current = _commentHtml;
-          return _commentHtml;
-        } else {
-          onPreviewError(getPreviewedHtmlRes);
-          return "";
-        }
+        const _commentHtml = getPreviewedHtmlRes.data;
+        prevCommentHtmlRef.current = _commentHtml;
+        return _commentHtml;
       },
       {
         manual: true,
+        onError: onPreviewError,
       },
     );
 
@@ -93,12 +89,18 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
             href={user.html_url}
           />
         ) : (
-          <a className="gt-avatar-github" onClick={onLogin}>
+          <button
+            type="button"
+            aria-label={polyglot.t("login-with-github")}
+            className="gt-avatar-github"
+            onClick={onLogin}
+          >
             <Svg className="gt-ico-github" icon={Github} />
-          </a>
+          </button>
         )}
         <div className="gt-header-comment">
           <textarea
+            aria-label={polyglot.t("comment")}
             {...restProps}
             ref={ref}
             value={inputComment}

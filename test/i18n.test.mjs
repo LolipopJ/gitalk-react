@@ -55,10 +55,10 @@ test("regional language tags use the available base translation", () => {
 test("Chinese language tags retain simplified and traditional translations", () => {
   for (const [requested, expected] of [
     ["zh-CN", "zh-CN"],
-    ["zh-SG", "zh-SG"],
+    ["zh-SG", "zh-CN"],
     ["zh-TW", "zh-TW"],
     ["zh-HK", "zh-HK"],
-    ["zh-MO", "zh-MO"],
+    ["zh-MO", "zh-TW"],
     ["zh-Hans", "zh-CN"],
     ["zh-Hant", "zh-TW"],
     ["zh-Hant-HK", "zh-TW"],

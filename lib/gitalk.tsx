@@ -2,6 +2,7 @@ import "./i18n";
 
 import { useMemoizedFn, useRequest } from "ahooks";
 import cn from "classnames";
+import { RequestError } from "octokit";
 import React, {
   useCallback,
   useEffect,
@@ -23,9 +24,9 @@ import type {
   Comment as CommentType,
   GitalkProps,
   Issue as IssueType,
-  User as UserType,
 } from "./interfaces";
 import {
+  getCommentReactionMutationQL,
   getIssueCommentsQL,
   type IssueCommentsQLResponse,
 } from "./services/graphql/comment";
@@ -109,10 +110,15 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   const [commentsCount, setCommentsCount] = useState<number>(0);
   const [comments, setComments] = useState<CommentType[]>([]);
   const [localComments, setLocalComments] = useState<CommentType[]>([]);
+  const commentCreationVersionRef = useRef(0);
   const [commentsCursor, setCommentsCursor] = useState("");
   const [commentsPage, setCommentsPage] = useState<number>(1);
+  const [hasMoreComments, setHasMoreComments] = useState(true);
   const commentsPerPage = useMemo(
-    () => (propsPerPage > 100 ? 100 : propsPerPage < 0 ? 10 : propsPerPage),
+    () =>
+      Number.isInteger(propsPerPage) && propsPerPage > 0
+        ? Math.min(propsPerPage, 100)
+        : 10,
     [propsPerPage],
   );
   /** Current sort order, have effect when user is logged */
@@ -168,8 +174,10 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     setUser(undefined);
     setComments([]);
     setLocalComments([]);
+    commentCreationVersionRef.current = 0;
     setCommentsCursor("");
     setCommentsPage(1);
+    setHasMoreComments(true);
   });
 
   const {
@@ -217,19 +225,17 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   } = useRequest(
     async () => {
       const getUserRes = await octokit.request("GET /user");
-      if (getUserRes.status === 200) {
-        const _user = getUserRes.data;
-        logger.s(`Login successfully:`, _user);
-        return _user;
-      } else {
-        clearSession();
-        logger.e(`Get user details with access token failed:`, getUserRes);
-        return undefined;
-      }
+      const _user = getUserRes.data;
+      logger.s(`Login successfully:`, _user);
+      return _user;
     },
     {
       ready: !!accessToken,
       refreshDeps: [accessToken],
+      onError: (error) => {
+        setAlert(error.message);
+        logger.e(`Get user details with access token failed:`, error);
+      },
     },
   );
 
@@ -261,14 +267,9 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         },
       );
 
-      if (createIssueRes.status === 201) {
-        const _issue = createIssueRes.data;
-        logger.s(`Create issue successfully:`, _issue);
-
-        return _issue;
-      } else {
-        throw new Error(`Create issue failed: ${createIssueRes}`);
-      }
+      const _issue = createIssueRes.data;
+      logger.s(`Create issue successfully:`, _issue);
+      return _issue;
     },
     {
       manual: true,
@@ -288,29 +289,27 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   const { loading: getIssueLoading, cancel: cancelGetIssue } = useRequest(
     async () => {
       if (issueNumber) {
-        const getIssueRes = await octokit.request(
-          "GET /repos/{owner}/{repo}/issues/{issue_number}",
-          {
-            owner,
-            repo,
-            issue_number: issueNumber,
-          },
-        );
+        try {
+          const getIssueRes = await octokit.request(
+            "GET /repos/{owner}/{repo}/issues/{issue_number}",
+            {
+              owner,
+              repo,
+              issue_number: issueNumber,
+            },
+          );
 
-        if (getIssueRes.status === 200) {
           const _issue = getIssueRes.data;
           logger.s(
             `Locate issue ${issueNumber} in repository ${owner}/${repo} successfully:`,
             _issue,
           );
           return _issue;
-        } else if (getIssueRes.status === 404) {
+        } catch (error) {
+          if (!(error instanceof RequestError) || error.status !== 404)
+            throw error;
           logger.w(
             `Issue ${issueNumber} in repository ${owner}/${repo} was not found.`,
-          );
-        } else {
-          throw new Error(
-            `Get issue ${issueNumber} in repository ${owner}/${repo} failed: ${getIssueRes}`,
           );
         }
       } else if (issueId) {
@@ -323,28 +322,18 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             per_page: 1,
           },
         );
-        const { status: getIssuesStatus, data: issues = [] } = getIssuesRes;
+        const { data: issues } = getIssuesRes;
 
-        if (getIssuesStatus === 200) {
-          if (issues.length) {
-            const _issue = issues[0];
-            logger.s(
-              `Locate issue with labels ${issueLabels} in repository ${owner}/${repo} successfully:`,
-              _issue,
-            );
-            return _issue;
-          } else {
-            logger.w(
-              `Issue with labels ${issueLabels} in repository ${owner}/${repo} was not found.`,
-            );
-          }
-        } else if (getIssuesStatus === 404) {
+        if (issues.length) {
+          const _issue = issues[0];
+          logger.s(
+            `Locate issue with labels ${issueLabels} in repository ${owner}/${repo} successfully:`,
+            _issue,
+          );
+          return _issue;
+        } else {
           logger.w(
             `Issue with labels ${issueLabels} in repository ${owner}/${repo} was not found.`,
-          );
-        } else {
-          throw new Error(
-            `Get issue with labels ${issueLabels} in repository ${owner}/${repo} failed: ${getIssuesRes}`,
           );
         }
       }
@@ -352,7 +341,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     },
     {
       ready: !!owner && !!repo && (!!issueNumber || !!issueId),
-      refreshDeps: [issueScope, accessToken],
+      refreshDeps: [issueScope, accessToken, isAdmin, createIssueManually],
       onBefore: () => {
         setIssue(undefined);
       },
@@ -376,7 +365,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       comments: CommentType[];
       cursor?: string;
       page?: number;
+      hasMore: boolean;
+      totalCount?: number;
+      creationVersion: number;
     }> => {
+      const creationVersion = commentCreationVersionRef.current;
       const { number: currentIssueNumber } = issue as IssueType;
       const from = (commentsPage - 1) * commentsPerPage + 1;
       const to = commentsPage * commentsPerPage;
@@ -396,29 +389,30 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             ...(commentsCursor ? { cursor: commentsCursor } : {}),
           });
 
-        if (getIssueCommentsRes.repository) {
-          const _comments =
-            getIssueCommentsRes.repository.issue.comments.nodes.map(
-              (comment) => {
-                return {
-                  ...comment,
-                  id: comment.databaseId,
-                  user: {
-                    ...defaultUser,
-                    avatar_url: comment.author.avatarUrl,
-                    login: comment.author.login,
-                    html_url: comment.author.url,
-                  },
-                  body_html: comment.bodyHTML,
-                  created_at: comment.createdAt,
-                  html_url: comment.resourcePath,
-                  reactions: {
-                    heart: comment.reactions?.totalCount ?? 0,
-                  },
-                  reactionsHeart: comment.reactions,
-                } as CommentType;
-              },
-            );
+        if (getIssueCommentsRes.repository?.issue) {
+          const _comments = getIssueCommentsRes.repository.issue.comments.nodes
+            .filter((comment) => comment !== null)
+            .map((comment) => {
+              return {
+                ...comment,
+                id: comment.databaseId,
+                node_id: comment.id,
+                user: comment.author
+                  ? {
+                      avatar_url: comment.author.avatarUrl,
+                      login: comment.author.login,
+                      html_url: comment.author.url,
+                    }
+                  : { ...defaultUser },
+                body_html: comment.bodyHTML,
+                created_at: comment.createdAt,
+                html_url: comment.resourcePath,
+                reactions: {
+                  heart: comment.reactions?.totalCount ?? 0,
+                },
+                reactionsHeart: comment.reactions,
+              } as CommentType;
+            });
           logger.s(
             `Get comments from ${from} to ${to} successfully:`,
             _comments,
@@ -427,14 +421,20 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           const commentsPageInfo =
             getIssueCommentsRes.repository.issue.comments.pageInfo;
           const commentsPageCursor =
-            commentsPageInfo.startCursor || commentsPageInfo.endCursor || "";
+            commentsPagerDirection === "last"
+              ? commentsPageInfo.startCursor
+              : commentsPageInfo.endCursor;
 
           return {
-            comments:
-              commentsPagerDirection === "last"
-                ? [..._comments, ...comments]
-                : [...comments, ..._comments],
-            cursor: commentsPageCursor,
+            comments: _comments,
+            creationVersion,
+            cursor: commentsPageCursor ?? "",
+            hasMore:
+              (commentsPagerDirection === "last"
+                ? commentsPageInfo.hasPreviousPage
+                : commentsPageInfo.hasNextPage) ?? false,
+            totalCount:
+              getIssueCommentsRes.repository.issue.comments.totalCount,
           };
         } else {
           throw new Error(
@@ -457,42 +457,53 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           },
         );
 
-        if (getIssueCommentsRes.status === 200) {
-          const _comments = getIssueCommentsRes.data.map((comment) => {
-            const reactionsHeartTotalCount = comment.reactions?.heart ?? 0;
-            return {
-              ...defaultUser,
-              ...comment,
-              reactionsHeart: {
-                totalCount: reactionsHeartTotalCount,
-                viewerHasReacted: false,
-                nodes: [],
-              },
-            } as CommentType;
-          });
-          logger.s(
-            `Get comments from ${from} to ${to} successfully:`,
-            _comments,
-          );
-
+        const _comments = getIssueCommentsRes.data.map((comment) => {
+          const reactionsHeartTotalCount = comment.reactions?.heart ?? 0;
           return {
-            comments: [...comments, ..._comments],
-            page: commentsPage + 1,
-          };
-        } else {
-          throw new Error(
-            `Get comments from ${from} to ${to} failed: ${getIssueCommentsRes}`,
-          );
-        }
+            ...comment,
+            user: comment.user ?? { ...defaultUser },
+            reactions: { heart: reactionsHeartTotalCount },
+            reactionsHeart: {
+              totalCount: reactionsHeartTotalCount,
+              viewerHasReacted: false,
+            },
+          } as CommentType;
+        });
+        logger.s(`Get comments from ${from} to ${to} successfully:`, _comments);
+
+        const hasMore = /<[^>]+>;\s*rel="next"/.test(
+          getIssueCommentsRes.headers?.link ?? "",
+        );
+        return {
+          comments: _comments,
+          creationVersion,
+          page: commentsPage + 1,
+          hasMore,
+          totalCount: hasMore
+            ? undefined
+            : new Set([...comments, ..._comments].map((comment) => comment.id))
+                .size,
+        };
       }
     },
     {
       manual: true,
       ready: !!owner && !!repo && !!issue && !getUserLoading,
       onSuccess: (result) => {
-        setComments(result.comments);
+        setComments((previous) =>
+          user && commentsPagerDirection === "last"
+            ? [...result.comments, ...previous]
+            : [...previous, ...result.comments],
+        );
         if (result.cursor !== undefined) setCommentsCursor(result.cursor);
         if (result.page !== undefined) setCommentsPage(result.page);
+        setHasMoreComments(result.hasMore);
+        // A later request can recount comments submitted while this page loaded.
+        if (
+          result.totalCount !== undefined &&
+          result.creationVersion === commentCreationVersionRef.current
+        )
+          setCommentsCount(result.totalCount);
       },
       onError: (error) => {
         setAlert(error.message);
@@ -524,13 +535,12 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
       if (createIssueCommentRes.status === 201) {
         const createdIssueComment = {
-          ...defaultUser,
           ...createIssueCommentRes.data,
+          user: createIssueCommentRes.data.user ?? { ...defaultUser },
           reactions: { heart: 0 },
           reactionsHeart: {
             totalCount: 0,
             viewerHasReacted: false,
-            nodes: [],
           },
         } as CommentType;
         logger.s(`Create issue comment successfully.`);
@@ -546,6 +556,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       manual: true,
       ready: !!owner && !!repo && !!issue && !!user,
       onSuccess: (createdComment) => {
+        commentCreationVersionRef.current += 1;
         setLocalComments((prev) => prev.concat(createdComment));
         setCommentsCount((prev) => prev + 1);
         onCreateComment?.(createdComment);
@@ -588,12 +599,14 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   };
 
   useLayoutEffect(() => {
+    commentCreationVersionRef.current = 0;
     setIssue(undefined);
     setComments([]);
     setLocalComments([]);
     setCommentsCount(0);
     setCommentsCursor("");
     setCommentsPage(1);
+    setHasMoreComments(true);
     setAlert("");
     return () => {
       cancelGetIssue();
@@ -619,6 +632,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     setComments([]);
     setCommentsCursor("");
     setCommentsPage(1);
+    setHasMoreComments(true);
 
     const timer = setTimeout(() => {
       runGetComments();
@@ -632,6 +646,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     issue,
     user,
     commentsPagerDirection,
+    commentsPerPage,
     cancelGetComments,
     runGetComments,
   ]);
@@ -666,106 +681,48 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     run: runLikeOrDislikeComment,
     cancel: cancelLikeOrDislikeComment,
   } = useRequest(
-    async (
-      like: boolean,
-      commentId: CommentType["id"],
-      reactionId?: number,
-    ) => {
-      const deletedReactionId = reactionId;
-      let createdReactionId: number = -1;
-      if (like) {
-        const likeCommentRes = await octokit.request(
-          "POST /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions",
-          {
-            owner,
-            repo,
-            comment_id: commentId,
-            content: "heart",
-          },
-        );
-
-        if (likeCommentRes.status === 201) {
-          logger.s(`You like the comment!`);
-          createdReactionId = likeCommentRes.data.id;
-        } else if (likeCommentRes.status === 200) {
-          logger.i(`You already liked the comment!`);
-        } else {
-          logger.e(`Failed to like the comment.`);
-          return;
-        }
-      } else {
-        if (reactionId) {
-          const dislikeCommentRes = await octokit.request(
-            "DELETE /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions/{reaction_id}",
-            {
-              owner,
-              repo,
-              comment_id: commentId,
-              reaction_id: reactionId,
-            },
-          );
-
-          if (dislikeCommentRes.status === 204) {
-            logger.s(`You unlike the comment.`);
-          } else {
-            logger.e(`Failed to unlike the comment.`);
-            return;
-          }
-        } else {
-          logger.e("Reaction ID is not provided.");
-          return;
-        }
-      }
-
-      let isLocalComment = false;
-      let targetComment = comments.find((comment) => comment.id === commentId);
-      if (!targetComment) {
-        targetComment = localComments.find(
-          (comment) => comment.id === commentId,
-        );
-        isLocalComment = true;
-      }
-      if (targetComment) {
-        const username = (user as UserType).login;
-
-        const prevHeartCount = targetComment.reactions?.heart ?? 0;
-        const newHeartCount = like ? prevHeartCount + 1 : prevHeartCount - 1;
-
-        const prevHeartNodes = targetComment.reactionsHeart?.nodes ?? [];
-        const newHeartNodes = like
-          ? prevHeartNodes.concat([
-              {
-                databaseId: createdReactionId,
-                user: {
-                  login: username,
-                },
-              },
-            ])
-          : prevHeartNodes.filter(
-              (node) => node.databaseId !== deletedReactionId,
-            );
-
-        targetComment.reactions = {
-          heart: newHeartCount,
-        };
-        targetComment.reactionsHeart = {
-          totalCount: newHeartCount,
-          viewerHasReacted: like,
-          nodes: newHeartNodes,
-        };
-      }
-      if (isLocalComment) {
-        setLocalComments((prev) => [...(prev ?? [])]);
-      } else {
-        setComments((prev) => [...(prev ?? [])]);
-      }
+    async (like: boolean, commentId: CommentType["id"]) => {
+      const targetComment = comments
+        .concat(localComments)
+        .find((comment) => comment.id === commentId);
+      if (!targetComment) throw new Error("Comment is no longer available.");
+      const result = await octokit.graphql<{
+        reaction: {
+          subject: { reactions: CommentType["reactionsHeart"] } | null;
+        } | null;
+      }>(getCommentReactionMutationQL(like), {
+        subjectId: targetComment.node_id,
+      });
+      const reactions = result.reaction?.subject?.reactions;
+      if (!reactions)
+        throw new Error("The comment reaction could not be updated.");
+      return { commentId, reactions };
     },
     {
       manual: true,
-      ready: !!owner && !!repo && !!user,
+      ready: !!owner && !!repo && !!user && !!issue,
+      onSuccess: ({ commentId, reactions }) => {
+        const updateComment = (comment: CommentType): CommentType =>
+          comment.id === commentId
+            ? {
+                ...comment,
+                reactions: { heart: reactions.totalCount },
+                reactionsHeart: reactions,
+              }
+            : comment;
+        setComments((previous) => previous.map(updateComment));
+        setLocalComments((previous) => previous.map(updateComment));
+      },
+      onError: (error) => {
+        setAlert(error.message);
+        logger.e("Update comment reaction failed:", error);
+      },
     },
   );
-
+  useLayoutEffect(
+    () => () => cancelLikeOrDislikeComment(),
+    [issueScope, accessToken, cancelLikeOrDislikeComment],
+  );
   const initialized = useMemo(
     () =>
       !getAccessTokenLoading &&
@@ -934,6 +891,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
               <CommentsList
                 comments={loadedComments}
                 commentsCount={commentsCount}
+                hasMoreComments={hasMoreComments}
                 onGetComments={runGetComments}
                 getCommentsLoading={getCommentsLoading}
                 user={user}

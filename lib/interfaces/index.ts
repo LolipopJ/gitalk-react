@@ -1,7 +1,5 @@
 import type { Endpoints } from "@octokit/types";
 
-import type { IssueCommentsQLResponse } from "../services/graphql/comment";
-
 export interface GitalkProps extends Omit<
   React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>,
   "id" | "title"
@@ -123,7 +121,11 @@ export interface GitalkProps extends Omit<
    *
    * @deprecated use `defaultUser`
    */
-  defaultAuthor?: IssueCommentsQLResponse["repository"]["issue"]["comments"]["nodes"][number]["author"];
+  defaultAuthor?: {
+    avatarUrl: Comment["user"]["avatar_url"];
+    login: Comment["user"]["login"];
+    url: Comment["user"]["html_url"];
+  };
   /**
    * Default collapse the comment if meets the height (px)
    */
@@ -164,7 +166,7 @@ type CommentDefine =
 
 export type Comment = Pick<
   CommentDefine,
-  "id" | "body" | "body_html" | "created_at" | "html_url"
+  "id" | "node_id" | "body" | "body_html" | "created_at" | "html_url"
 > & {
   user: Pick<
     NonNullable<CommentDefine["user"]>,
@@ -174,11 +176,5 @@ export type Comment = Pick<
   reactionsHeart: {
     totalCount: number;
     viewerHasReacted: boolean;
-    nodes: {
-      databaseId: number;
-      user: {
-        login: string;
-      };
-    }[];
   };
 };

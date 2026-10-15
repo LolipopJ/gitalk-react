@@ -33,12 +33,6 @@ const loadUserService = (fetch, browser = {}) => {
     history: { replaceState: (_state, _title, url) => (location.href = url) },
     ...browser,
     require: (path) => {
-      if (path === "../utils/query") {
-        return {
-          stringifySearchQuery: (query) =>
-            new URLSearchParams(query).toString(),
-        };
-      }
       if (path === "../constants") {
         return {
           DEFAULT_PROXY:
@@ -611,7 +605,15 @@ test("a failed exchange preserves guest comments and pending public reads", () =
   const comments = [{ id: 1 }];
   app.requests[4].options.onSuccess({ comments });
   app.requests[0].options.onError(new Error("bad_verification_code"));
-  assert.equal(app.states.includes(comments), true);
+  assert.equal(
+    app.states.some(
+      (value) =>
+        Array.isArray(value) &&
+        value.length === comments.length &&
+        value.every((comment, index) => comment === comments[index]),
+    ),
+    true,
+  );
   assert.equal(app.requests[3].cancelled, 0);
   assert.equal(app.storage.size, 0);
 });

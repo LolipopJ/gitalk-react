@@ -17,11 +17,7 @@ interface CommentItemProps
       | "highlightAdminComment"
     >,
     Pick<GitalkProps, "admin"> {
-  onLike: (
-    like: boolean,
-    commentId: CommentType["id"],
-    heartReactionId?: number,
-  ) => void;
+  onLike: (like: boolean, commentId: CommentType["id"]) => void;
   user?: User;
 }
 
@@ -32,11 +28,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
   onLike,
   ...restProps
 }) => {
-  const {
-    id: commentId,
-    user: commentAuthor,
-    reactionsHeart: commentReactionsHeart,
-  } = comment;
+  const { id: commentId, user: commentAuthor } = comment;
 
   const commentAuthorName = commentAuthor?.login;
   const isAuthor =
@@ -46,9 +38,6 @@ const CommentItem: React.FC<CommentItemProps> = ({
     !!admin.find(
       (username) => username.toLowerCase() === commentAuthorName.toLowerCase(),
     );
-  const heartReactionId = commentReactionsHeart?.nodes.find(
-    (node) => node.user.login === user?.login,
-  )?.databaseId;
 
   return (
     <Comment
@@ -57,7 +46,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
       isAuthor={isAuthor}
       isAdmin={isAdmin}
       onLike={(like) => {
-        onLike(like, commentId, heartReactionId);
+        onLike(like, commentId);
       }}
     />
   );
@@ -66,6 +55,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
 interface CommentsListProps extends Omit<CommentItemProps, "comment"> {
   comments: CommentType[];
   commentsCount: number;
+  hasMoreComments: boolean;
   onGetComments: () => void;
   getCommentsLoading: boolean;
 }
@@ -74,6 +64,7 @@ const CommentsList: React.FC<CommentsListProps> = (props) => {
   const {
     comments,
     commentsCount,
+    hasMoreComments,
     onGetComments,
     getCommentsLoading,
     ...restCommentProps
@@ -95,7 +86,7 @@ const CommentsList: React.FC<CommentsListProps> = (props) => {
       {!commentsCount && (
         <p className="gt-comments-null">{polyglot.t("first-comment-person")}</p>
       )}
-      {commentsCount > comments.length ? (
+      {hasMoreComments ? (
         <div className="gt-comments-controls">
           <Button
             className="gt-btn-loadmore"

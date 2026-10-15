@@ -1,5 +1,4 @@
 import { DEFAULT_PROXY } from "../constants";
-import { stringifySearchQuery } from "../utils/query";
 
 const stateKey = (clientID: string) => `GT_OAUTH_STATE:${clientID}`;
 const callbackParams = [
@@ -24,7 +23,7 @@ export const getAuthorizeUrl = (clientID: string) => {
     scope: "public_repo",
     state,
   };
-  return `https://github.com/login/oauth/authorize?${stringifySearchQuery(query)}`;
+  return `https://github.com/login/oauth/authorize?${new URLSearchParams(query)}`;
 };
 
 export const consumeOAuthCallback = (clientID: string): string | undefined => {
