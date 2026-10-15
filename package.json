@@ -56,7 +56,7 @@
     "prepack": "yarn test",
     "lint": "yarn lint:ts && yarn lint:scss",
     "lint:ts": "eslint . --fix",
-    "lint:scss": "stylelint **/*.scss --fix",
+    "lint:scss": "stylelint {dev,lib}/**/*.scss --fix",
     "start:proxy": "node --env-file=proxy-server/.env.local proxy-server/server.mjs",
     "test": "yarn build:lib && node --test test/*.test.mjs proxy-server/server.test.mjs"
   },

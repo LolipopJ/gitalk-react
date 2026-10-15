@@ -6,7 +6,7 @@
   &::before,
   &::after {
     display: table;
-    content: '';
+    content: "";
   }
 
   &::after {
@@ -130,7 +130,6 @@ $gt-breakpoint-mobile: 480px;
     color: var(--gt-color-main);
 
     &:hover {
-      color: var(--gt-color-main-lighter);
       border-color: var(--gt-color-main-lighter);
     }
 
@@ -141,6 +140,12 @@ $gt-breakpoint-mobile: 480px;
       &:hover {
         color: var(--gt-color-link-active);
       }
+    }
+  }
+
+  a {
+    &:hover {
+      color: var(--gt-color-main-lighter);
     }
   }
 
@@ -202,7 +207,7 @@ $gt-breakpoint-mobile: 480px;
         height: em(12px);
         margin-top: em(-3px);
         margin-left: em(-6px);
-        content: '';
+        content: "";
         border: 1px solid var(--gt-color-btn);
         border-top-color: var(--gt-color-main);
         border-radius: 50%;
@@ -230,7 +235,7 @@ $gt-breakpoint-mobile: 480px;
         height: $gt-size-loader-dot;
         margin-top: -(calc($gt-size-loader-dot / 2));
         margin-left: -(calc($gt-size-loader-dot / 2));
-        content: '';
+        content: "";
         background-color: var(--gt-color-loader);
         border-radius: 50%;
       }
@@ -435,7 +440,7 @@ $gt-breakpoint-mobile: 480px;
             left: em(8px);
             width: em(4px);
             height: em(4px);
-            content: '';
+            content: "";
             background: var(--gt-color-main);
           }
         }
@@ -673,8 +678,7 @@ $gt-breakpoint-mobile: 480px;
             box-shadow: 0 em(2px) em(12px) 0 var(--gt-color-comment-shadow);
 
             &:hover {
-              box-shadow: 0 em(2px) em(24px) 0
-                var(--gt-color-comment-shadow-admin);
+              box-shadow: 0 em(2px) em(24px) 0 var(--gt-color-comment-shadow-admin);
             }
           }
         }
@@ -684,7 +688,7 @@ $gt-breakpoint-mobile: 480px;
 
   &::after {
     position: fixed;
-    content: '';
+    content: "";
     opacity: 0;
   }
 

@@ -9,7 +9,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default defineConfig(
-  globalIgnores([".serena/**", "dist/**", "docs/**", "out/**"]),
+  globalIgnores([".*/**", "dist/**", "docs/**", "out/**"]),
   js.configs.recommended,
   {
     files: ["**/*.{ts,tsx}"],
