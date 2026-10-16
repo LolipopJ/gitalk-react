@@ -13,6 +13,7 @@
   },
   "homepage": "https://lolipopj.github.io/gitalk-react",
   "license": "MIT",
+  "packageManager": "pnpm@12.11.2",
   "type": "module",
   "files": [
     "dist/",
