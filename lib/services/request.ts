@@ -5,7 +5,7 @@ import logger from "../utils/logger";
 export const getOctokitInstance = (
   accessToken: string | undefined,
   onUnauthorized: () => void,
-) => {
+): Octokit => {
   const _octokit = new Octokit(
     accessToken
       ? {

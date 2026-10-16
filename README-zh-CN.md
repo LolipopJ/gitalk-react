@@ -14,20 +14,17 @@
 ## 与原版的区别
 
 - **不兼容旧版浏览器**：仅保证兼容支持 [ES2020](https://caniuse.com/?feats=mdn-javascript_operators_optional_chaining,mdn-javascript_operators_nullish_coalescing,mdn-javascript_builtins_globalthis,es6-module-dynamic-import,bigint,mdn-javascript_builtins_promise_allsettled,mdn-javascript_builtins_string_matchall,mdn-javascript_statements_export_namespace,mdn-javascript_operators_import_meta) 的现代浏览器。
-- **依赖 React 运行时环境**：`react >= 16.8.0 && react-dom >= 16.8.0`。
 - **部分参数的默认值发生了变化**：迁移到此组件时请留意。
   - `id`：Gitalk 使用 `location.href` 作为默认值，Gitalk React 使用 `location.host + location.pathname` 作为默认值，避免预期外的查询参数。
   - `defaultAuthor`：仍然可以使用。Gitalk React 新增了参数项 `defaultUser` 来设置评论的默认用户，保持字段命名与 Github API 一致。
 
 ## 快速开始
 
-### 安装
+### Node.js 项目
 
 ```bash
 npm install gitalk-react
 ```
-
-### 使用
 
 在项目中引入样式与组件：
 
@@ -81,8 +78,6 @@ Gitalk React 依赖于 Github OAuth App 进行登录认证；您需要首先[注
 />
 ```
 
-### 仅客户端渲染
-
 Gitalk React 是一个**客户端组件**，**不支持服务端渲染（SSR）**。它在渲染过程中会读取浏览器 API。源码入口及两个发布的 JavaScript 入口均带有 `"use client"` 指令；这标记了 React 客户端边界，但不会禁用 SSR 框架中的预渲染功能。
 
 在 Next.js App Router 中，创建一个客户端包装器并对动态导入禁用 SSR：
@@ -102,6 +97,47 @@ export default function Comments(props: GitalkProps) {
 ```
 
 使用上述配置渲染此包装器。其他 SSR 框架也必须确保仅在浏览器端加载和挂载 Gitalk。
+
+### 浏览器 CDN
+
+两种浏览器构建版本都会暴露一个全局的 `Gitalk` 构造函数。加载其中一个构建版本及所需的样式表即可；以下示例使用的是浅色主题。如需使用深色主题，请引入 `dist/gitalk-dark.css`。
+
+对于未使用 React 的页面，请使用完整版构建，该版本内置了 React 19.3.1 和 ReactDOM 19.3.1，并通过 `createRoot` 进行挂载：
+
+```html
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/gitalk-react/dist/gitalk-light.css"
+/>
+<div id="gitalk-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/gitalk-react/dist/gitalk.browser.full.js"></script>
+<script>
+  const gitalk = new Gitalk({
+    clientID: 'YOUR_GITHUB_OAUTH_APP_CLIENT_ID',
+    proxy: 'https://your-server.com/oauth/access_token',
+    owner: 'GITHUB_REPO_OWNER',
+    repo: 'GITHUB_REPO_NAME',
+    admin: ['GITHUB_REPO_OWNER'],
+  })
+  gitalk.render('gitalk-container')
+</script>
+```
+
+jsDelivr 和 unpkg 的裸包 URL 默认指向完整版构建。
+
+如果页面中已存在匹配的全局 `React` 和 `ReactDOM` 对象，请使用 `gitalk.browser.js` 而非 `gitalk.browser.full.js`。当检测到 `ReactDOM.createRoot` 可用时（React 18+），它会优先使用该方法；否则将回退使用 `ReactDOM.render` / `ReactDOM.unmountComponentAtNode`（适用于 React 16/17）。以下是 React 18 环境下的完整脚本加载顺序示例：
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/browser/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/browser/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gitalk-react/dist/gitalk.browser.js"></script>
+```
+
+通过应用打包工具安装的 React 不会自动提供这些全局变量。此类应用应使用 React 组件导入方式，或在加载浏览器构建前显式暴露共享运行时。在使用 React 19 时，需将 `react-dom/client` 模块作为 `ReactDOM` 暴露出来，以确保其 `createRoot` 方法可用；仅引入 `react-dom` 模块并不会导出 `createRoot`。加载完整版构建既不依赖也不覆盖页面现有的 React 全局变量。
+
+`render(id)` 方法接受元素 ID（不带 `#` 前缀）。调用该方法时，对应元素必须已存在于 DOM 中。重复调用此方法会更新当前挂载点；若传入新的 ID，则会先卸载之前的容器。在移除组件前（例如页面跳转时），请务必调用 `gitalk.destroy()`。实例在销毁后仍可重新渲染。
+
+构造函数接受的配置项与 React 组件相同，建议采用前述 `clientID` + `proxy` 的配置方式，以确保密钥安全存储于服务端。两种浏览器构建均不会自动包含 CSS 样式。
 
 ## 配置
 
@@ -217,6 +253,8 @@ Gitalk React 使用的语言。
 
 创建评论**成功时**调用的回调方法。
 
+## 主题
+
 ### 颜色
 
 您可以通过设置 CSS 变量快速修改 Gitalk React 的主题颜色，以匹配您的站点风格。
@@ -312,19 +350,19 @@ VITE_ADMIN='["YOUR_GITHUB_USERNAME"]'
 安装依赖：
 
 ```bash
-yarn
+pnpm install
 ```
 
 在浏览器中调试开发：
 
 ```bash
-yarn dev
+pnpm run dev
 ```
 
 运行测试：
 
 ```bash
-yarn test
+pnpm run test
 ```
 
 ### 质量检查
@@ -332,7 +370,7 @@ yarn test
 检查并修复代码的质量与格式问题：
 
 ```bash
-yarn lint
+pnpm run lint
 ```
 
 ### 构建
@@ -340,7 +378,7 @@ yarn lint
 打包并构建组件：
 
 ```bash
-yarn build
+pnpm run build
 ```
 
 ## 开发中的功能
@@ -357,5 +395,5 @@ yarn build
 
 [npm-version-image]: https://img.shields.io/npm/v/gitalk-react.svg?style=flat-square
 [npm-version-url]: https://www.npmjs.com/package/gitalk-react
-[gzip-size]: https://img.badgesize.io/https://unpkg.com/gitalk-react/dist/gitalk.umd.cjs?compression=gzip&style=flat-square
-[gzip-url]: https://unpkg.com/gitalk-react/dist/gitalk.umd.cjs
+[gzip-size]: https://img.badgesize.io/https://unpkg.com/gitalk-react/dist/gitalk.browser.js?compression=gzip&style=flat-square
+[gzip-url]: https://unpkg.com/gitalk-react/dist/gitalk.browser.js

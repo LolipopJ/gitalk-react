@@ -27,8 +27,11 @@
   ],
   "main": "./dist/gitalk.cjs",
   "module": "./dist/gitalk.js",
+  "unpkg": "./dist/gitalk.browser.full.js",
+  "jsdelivr": "./dist/gitalk.browser.full.js",
   "exports": {
     ".": {
+      "unpkg": "./dist/gitalk.browser.full.js",
       "import": {
         "types": "./dist/gitalk.d.mts",
         "default": "./dist/gitalk.js"
@@ -47,18 +50,18 @@
   "types": "./dist/gitalk.d.mts",
   "scripts": {
     "dev": "vite --config vite.config.preview.ts",
-    "build": "yarn build:lib && yarn build:preview",
-    "build:lib": "yarn build:ts && yarn build:scss",
-    "build:ts": "tsc -b && vite build",
+    "build": "tsc -b && pnpm run build:lib && pnpm run build:browser && pnpm run build:scss && pnpm run build:preview",
+    "build:lib": "vite build",
+    "build:browser": "vite build --config vite.config.browser.ts && vite build --config vite.config.browser.ts --mode full",
     "build:scss": "vite build --config vite.config.scss.ts",
     "build:preview": "vite build --config vite.config.preview.ts",
     "analyze": "vite build --mode analyze",
-    "prepack": "yarn test",
-    "lint": "yarn lint:ts && yarn lint:scss",
+    "prepack": "pnpm run test",
+    "lint": "pnpm run lint:ts && pnpm run lint:scss",
     "lint:ts": "eslint . --fix",
     "lint:scss": "stylelint {dev,lib}/**/*.scss --fix",
     "start:proxy": "node --env-file=proxy-server/.env.local proxy-server/server.mjs",
-    "test": "yarn build:lib && node --test test/*.test.mjs proxy-server/server.test.mjs"
+    "test": "pnpm run build && node --test test/*.test.mjs"
   },
   "dependencies": {
     "@octokit/types": "^18.0.0",
@@ -78,6 +81,8 @@
     "@types/node-polyglot": "^2.5.0",
     "@types/react": "^16.14.70",
     "@types/react-dom": "^16.9.25",
+    "@types/react-latest": "npm:@types/react@latest",
+    "@types/react-dom-latest": "npm:@types/react-dom@latest",
     "@vitejs/plugin-react": "^6.1.2",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
@@ -92,6 +97,8 @@
     "prettier": "^3.9.10",
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
+    "react-latest": "npm:react@latest",
+    "react-dom-latest": "npm:react-dom@latest",
     "rollup-plugin-visualizer": "^7.1.1",
     "sass-embedded": "^1.105.1",
     "stylelint": "^17.16.0",

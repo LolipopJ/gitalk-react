@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { request } from "node:http";
 import test from "node:test";
 
-import { createOAuthServer } from "./server.mjs";
+import { createOAuthServer } from "../proxy-server/server.mjs";
 
 const config = {
   clientID: "server-client",

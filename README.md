@@ -14,20 +14,17 @@ Developed for modern browsers, focusing on reducing build size and enhancing dev
 ## Differences
 
 - **Not compatible with older browsers**: Only guarantees compatibility with modern browsers that support [ES2020](https://caniuse.com/?feats=mdn-javascript_operators_optional_chaining,mdn-javascript_operators_nullish_coalescing,mdn-javascript_builtins_globalthis,es6-module-dynamic-import,bigint,mdn-javascript_builtins_promise_allsettled,mdn-javascript_builtins_string_matchall,mdn-javascript_statements_export_namespace,mdn-javascript_operators_import_meta).
-- **Depends on React runtime environment**: `react >= 16.8.0 && react-dom >= 16.8.0`.
 - **Some default values for parameters have changed**: Please pay attention when migrating to this component.
   - `id`: Gitalk uses `location.href` as the default value, while Gitalk React uses `location.host + location.pathname` as the default value, to avoid unexpected search parameters.
   - `defaultAuthor`: Can still be used. Gitalk React has added a new parameter `defaultUser` to set the default user for comments, keeping the field naming consistent with the GitHub API.
 
 ## Quick Start
 
-### Installation
+### Node.js Project
 
 ```bash
 npm install gitalk-react
 ```
-
-### Usage
 
 Import styles and component into your project:
 
@@ -81,8 +78,6 @@ For a secure deployment with your own backend proxy server, use the following co
 />
 ```
 
-### Client-only rendering
-
 Gitalk React is a **client component** and does **not support server-side rendering (SSR)**. It reads browser APIs during rendering. The source entry and both published JavaScript entry points carry `"use client"`; this marks the React client boundary but does not disable prerendering in SSR frameworks.
 
 In Next.js App Router, create a client wrapper and disable SSR for the dynamic import:
@@ -102,6 +97,47 @@ export default function Comments(props: GitalkProps) {
 ```
 
 Render this wrapper with the configuration shown above. Other SSR frameworks must also load and mount Gitalk only in the browser.
+
+### Browser CDN
+
+Both browser builds expose a global `Gitalk` constructor. Load one build and the desired stylesheet; the examples below use the light theme. Use `dist/gitalk-dark.css` for the dark theme.
+
+For a page without React, use the full build, which includes React 19.3.1 and ReactDOM 19.3.1 and mounts with `createRoot`:
+
+```html
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/gitalk-react/dist/gitalk-light.css"
+/>
+<div id="gitalk-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/gitalk-react/dist/gitalk.browser.full.js"></script>
+<script>
+  const gitalk = new Gitalk({
+    clientID: 'YOUR_GITHUB_OAUTH_APP_CLIENT_ID',
+    proxy: 'https://your-server.com/oauth/access_token',
+    owner: 'GITHUB_REPO_OWNER',
+    repo: 'GITHUB_REPO_NAME',
+    admin: ['GITHUB_REPO_OWNER'],
+  })
+  gitalk.render('gitalk-container')
+</script>
+```
+
+Bare jsDelivr and unpkg package URLs select the full build.
+
+For a page that already provides matching global `React` and `ReactDOM` objects, use `gitalk.browser.js` instead of `gitalk.browser.full.js`. It uses `ReactDOM.createRoot` when available (React 18+) and otherwise uses `ReactDOM.render` / `ReactDOM.unmountComponentAtNode` (React 16/17). A complete script loading order for React 18 is:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/browser/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/browser/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gitalk-react/dist/gitalk.browser.js"></script>
+```
+
+React installed inside an application bundle does not automatically provide these globals. Use the React component import for such applications, or explicitly expose the shared runtime before loading the browser build. With React 19, expose the `react-dom/client` module as `ReactDOM` so its `createRoot` is available; the `react-dom` module alone does not export `createRoot`. Loading the full build does not require or replace the page's React globals.
+
+`render(id)` accepts an element ID, without `#`. The element must exist before calling it. Calling it again updates the current mount; calling it with another ID unmounts the previous container first. Call `gitalk.destroy()` before removing the widget, such as during page navigation. The instance can render again after destruction.
+
+The constructor accepts the same options as the React component, prefer the `clientID` + `proxy` configuration above so the secret stays on the server. Neither browser build includes CSS automatically.
 
 ## Configuration
 
@@ -314,19 +350,19 @@ VITE_ADMIN='["YOUR_GITHUB_USERNAME"]'
 Install dependencies:
 
 ```bash
-yarn
+pnpm install
 ```
 
 Debug in your browser during development:
 
 ```bash
-yarn dev
+pnpm run dev
 ```
 
 Run test:
 
 ```bash
-yarn test
+pnpm run test
 ```
 
 ### Lint
@@ -334,7 +370,7 @@ yarn test
 Check and fix code quality and formatting issues:
 
 ```bash
-yarn lint
+pnpm run lint
 ```
 
 ### Production
@@ -342,7 +378,7 @@ yarn lint
 Bundle and build components:
 
 ```bash
-yarn build
+pnpm run build
 ```
 
 ## Features under Development
@@ -359,5 +395,5 @@ yarn build
 
 [npm-version-image]: https://img.shields.io/npm/v/gitalk-react.svg?style=flat-square
 [npm-version-url]: https://www.npmjs.com/package/gitalk-react
-[gzip-size]: https://img.badgesize.io/https://unpkg.com/gitalk-react/dist/gitalk.umd.cjs?compression=gzip&style=flat-square
-[gzip-url]: https://unpkg.com/gitalk-react/dist/gitalk.umd.cjs
+[gzip-size]: https://img.badgesize.io/https://unpkg.com/gitalk-react/dist/gitalk.browser.js?compression=gzip&style=flat-square
+[gzip-url]: https://unpkg.com/gitalk-react/dist/gitalk.browser.js

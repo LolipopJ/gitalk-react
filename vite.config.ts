@@ -19,7 +19,6 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       external: Object.keys(packageJson.peerDependencies),
       output: {
-        banner: '"use client";',
         exports: "named",
         footer: (chunk) =>
           chunk.fileName.endsWith(".cjs")

@@ -119,6 +119,18 @@ test("the packed CommonJS export is callable and exposes itself as Gitalk", (con
   assert.equal(Gitalk.Gitalk, Gitalk);
 });
 
+test("both CDN builds are published and default CDNs select the full build", () => {
+  assert.equal(manifest.unpkg, "./dist/gitalk.browser.full.js");
+  assert.equal(manifest.exports["."].unpkg, "./dist/gitalk.browser.full.js");
+  assert.equal(manifest.jsdelivr, "./dist/gitalk.browser.full.js");
+  for (const name of ["gitalk.browser.js", "gitalk.browser.full.js"]) {
+    assert.match(
+      readFileSync(join(installed, "dist", name), "utf8"),
+      /\bvar Gitalk\s*=/,
+    );
+  }
+});
+
 test("all exported styles are included in the tarball", () => {
   for (const [name, filename] of Object.entries(manifest.exports)) {
     if (name.endsWith(".css")) {
