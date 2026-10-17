@@ -7,6 +7,12 @@ import vm from "node:vm";
 import { Octokit } from "octokit";
 import ts from "typescript";
 
+const oauthScope = {
+  owner: "owner",
+  repo: "repo",
+  id: "site.example/article",
+};
+
 const loadUserService = (fetch, browser = {}) => {
   const location = new URL("https://site.example/article?view=all#comments");
   const storage = new Map();
@@ -25,6 +31,10 @@ const loadUserService = (fetch, browser = {}) => {
     URLSearchParams,
     crypto: webcrypto,
     sessionStorage: {
+      get length() {
+        return storage.size;
+      },
+      key: (index) => [...storage.keys()][index] ?? null,
       getItem: (key) => storage.get(key) ?? null,
       setItem: (key, value) => storage.set(key, value),
       removeItem: (key) => storage.delete(key),
@@ -47,27 +57,31 @@ const loadUserService = (fetch, browser = {}) => {
 
 test("authorization creates unpredictable, per-login state and consumes it once", () => {
   const service = loadUserService();
-  const first = new URL(service.getAuthorizeUrl("app"));
-  const second = new URL(service.getAuthorizeUrl("app"));
+  const first = new URL(service.getAuthorizeUrl("app", oauthScope, "first"));
+  const second = new URL(service.getAuthorizeUrl("app", oauthScope, "second"));
   const state = second.searchParams.get("state");
   assert.match(state, /^[a-f0-9]{64}$/);
   assert.notEqual(first.searchParams.get("state"), state);
   assert.equal(second.searchParams.get("redirect_uri"), service.location.href);
   service.location.search = `?view=all&code=grant&state=${state}`;
-  assert.equal(service.consumeOAuthCallback("app"), "grant");
+  const callback = service.consumeOAuthCallback("app", oauthScope);
+  assert.equal(callback.code, "grant");
+  assert.equal(callback.draft, "second");
   assert.equal(
     service.location.href,
     "https://site.example/article?view=all#comments",
   );
   service.location.search = `?code=grant&state=${state}`;
-  assert.throws(() => service.consumeOAuthCallback("app"), /state/i);
+  assert.throws(
+    () => service.consumeOAuthCallback("app", oauthScope),
+    /state/i,
+  );
 });
 
 for (const scenario of [
   "missing",
   "mismatch",
   "expired",
-  "other app",
   "other tab",
   "duplicate state",
   "duplicate code",
@@ -75,36 +89,225 @@ for (const scenario of [
   test(`rejects ${scenario} state before exchanging code`, () => {
     let now = 1000;
     const service = loadUserService(undefined, { Date: { now: () => now } });
-    const state = new URL(service.getAuthorizeUrl("app")).searchParams.get(
-      "state",
-    );
+    const state = new URL(
+      service.getAuthorizeUrl("app", oauthScope, "private draft"),
+    ).searchParams.get("state");
     if (scenario === "expired") now += 10 * 60 * 1000;
     if (scenario === "other tab") service.storage.clear();
     service.location.search = `?code=grant${scenario === "missing" ? "" : `&state=${scenario === "mismatch" ? "wrong" : state}`}${scenario === "duplicate state" ? `&state=${state}` : ""}${scenario === "duplicate code" ? "&code=other" : ""}`;
     assert.throws(
-      () =>
-        service.consumeOAuthCallback(
-          scenario === "other app" ? "another" : "app",
-        ),
+      () => service.consumeOAuthCallback("app", oauthScope),
       /state|callback/i,
     );
     assert.equal(service.location.search, "");
   });
 }
 
-test("denied authorization is consumed, displayed, and removed from the URL", () => {
+test("validated denied authorization returns its draft and reason exactly once", () => {
   const service = loadUserService();
-  const state = new URL(service.getAuthorizeUrl("app")).searchParams.get(
-    "state",
-  );
+  const state = new URL(
+    service.getAuthorizeUrl("app", oauthScope, "private draft"),
+  ).searchParams.get("state");
   service.location.search = `?view=all&error=access_denied&error_description=User+denied&error_uri=https://github.com&state=${state}`;
-  assert.throws(() => service.consumeOAuthCallback("app"), /User denied/);
+  const callback = service.consumeOAuthCallback("app", oauthScope);
+  assert.equal(callback.error, "User denied");
+  assert.equal(callback.draft, "private draft");
+  assert.equal(callback.code, undefined);
   assert.equal(
     service.location.href,
     "https://site.example/article?view=all#comments",
   );
   assert.equal(service.storage.size, 0);
+  assert.equal(service.consumeOAuthCallback("app", oauthScope), undefined);
+  service.location.search = `?error=access_denied&state=${state}`;
+  assert.throws(
+    () => service.consumeOAuthCallback("app", oauthScope),
+    /state/i,
+  );
 });
+
+test("a validated callback restores its exact draft after a full page reload", () => {
+  const service = loadUserService();
+  const draft = "  ## Draft\n\n中文 & emoji 🐱\n";
+  const authorization = new URL(
+    service.getAuthorizeUrl("app", oauthScope, draft),
+  );
+  assert.equal(authorization.href.includes("Draft"), false);
+  const reloaded = loadUserService(undefined, {
+    sessionStorage: {
+      get length() {
+        return service.storage.size;
+      },
+      key: (index) => [...service.storage.keys()][index] ?? null,
+      getItem: (key) => service.storage.get(key) ?? null,
+      removeItem: (key) => service.storage.delete(key),
+    },
+  });
+  reloaded.location.search = `?code=grant&state=${authorization.searchParams.get("state")}`;
+  const callback = reloaded.consumeOAuthCallback("app", oauthScope);
+  assert.equal(callback.code, "grant");
+  assert.equal(callback.draft, draft);
+  assert.equal(service.storage.size, 0);
+  assert.equal(reloaded.consumeOAuthCallback("app", oauthScope), undefined);
+});
+
+for (const [name, otherScope] of [
+  ["repository owner", { ...oauthScope, owner: "someone-else" }],
+  ["repository", { ...oauthScope, repo: "another-repo" }],
+  ["article", { ...oauthScope, id: "site.example/another-article" }],
+  ["explicit issue", { ...oauthScope, number: 2 }],
+  [
+    "long article suffix",
+    { ...oauthScope, id: "site.example/" + "x".repeat(60) + "/other" },
+  ],
+]) {
+  test(`OAuth draft does not cross ${name} scope`, () => {
+    const service = loadUserService();
+    const scope =
+      name === "long article suffix"
+        ? { ...oauthScope, id: "site.example/" + "x".repeat(60) + "/original" }
+        : oauthScope;
+    const first = new URL(service.getAuthorizeUrl("app", scope, "first draft"));
+    const second = new URL(
+      service.getAuthorizeUrl("app", otherScope, "second draft"),
+    );
+    service.location.search = `?code=grant&state=${first.searchParams.get("state")}`;
+    const callbackUrl = service.location.href;
+    const pending = [...service.storage];
+    assert.equal(service.consumeOAuthCallback("app", otherScope), undefined);
+    assert.equal(service.location.href, callbackUrl);
+    assert.deepEqual([...service.storage], pending);
+    assert.equal(
+      service.consumeOAuthCallback("app", scope).draft,
+      "first draft",
+    );
+    service.location.search = `?code=grant&state=${second.searchParams.get("state")}`;
+    assert.equal(
+      service.consumeOAuthCallback("app", otherScope).draft,
+      "second draft",
+    );
+    assert.equal(service.storage.size, 0);
+  });
+}
+
+test("an unrelated widget without pending login leaves another widget's callback intact", () => {
+  const service = loadUserService();
+  const state = new URL(
+    service.getAuthorizeUrl("app", oauthScope, "intended draft"),
+  ).searchParams.get("state");
+  service.location.search = `?view=all&code=grant&state=${state}`;
+  const callbackUrl = service.location.href;
+  const pending = [...service.storage];
+  assert.equal(
+    service.consumeOAuthCallback("app", { ...oauthScope, id: "other article" }),
+    undefined,
+  );
+  assert.equal(service.location.href, callbackUrl);
+  assert.deepEqual([...service.storage], pending);
+  assert.equal(
+    service.consumeOAuthCallback("app", oauthScope).draft,
+    "intended draft",
+  );
+  assert.equal(service.location.search, "?view=all");
+  assert.equal(service.storage.size, 0);
+});
+
+test("a different OAuth app leaves the callback and both pending drafts for their owners", () => {
+  const service = loadUserService();
+  const first = new URL(
+    service.getAuthorizeUrl("app", oauthScope, "first app draft"),
+  );
+  const second = new URL(
+    service.getAuthorizeUrl("other-app", oauthScope, "other app draft"),
+  );
+  service.location.search = `?code=first-grant&state=${first.searchParams.get("state")}`;
+  const callbackUrl = service.location.href;
+  const pending = [...service.storage];
+  assert.equal(
+    service.consumeOAuthCallback("other-app", oauthScope),
+    undefined,
+  );
+  assert.equal(service.location.href, callbackUrl);
+  assert.deepEqual([...service.storage], pending);
+  const callback = service.consumeOAuthCallback("app", oauthScope);
+  assert.equal(callback.code, "first-grant");
+  assert.equal(callback.draft, "first app draft");
+  service.location.search = `?code=other-grant&state=${second.searchParams.get("state")}`;
+  assert.equal(
+    service.consumeOAuthCallback("other-app", oauthScope).draft,
+    "other app draft",
+  );
+  assert.equal(service.storage.size, 0);
+});
+
+test("an expired callback is left for its widget to reject without consuming another draft", () => {
+  let now = 1000;
+  const service = loadUserService(undefined, { Date: { now: () => now } });
+  const otherScope = { ...oauthScope, id: "other article" };
+  const state = new URL(
+    service.getAuthorizeUrl("app", oauthScope, "expired draft"),
+  ).searchParams.get("state");
+  service.getAuthorizeUrl("app", otherScope, "unrelated draft");
+  const unrelated = [...service.storage].at(-1);
+  now += 10 * 60 * 1000;
+  service.location.search = `?code=grant&state=${state}`;
+  const callbackUrl = service.location.href;
+  assert.equal(service.consumeOAuthCallback("app", otherScope), undefined);
+  assert.equal(service.location.href, callbackUrl);
+  assert.throws(
+    () => service.consumeOAuthCallback("app", oauthScope),
+    /expired/i,
+  );
+  assert.equal(service.location.search, "");
+  assert.deepEqual([...service.storage], [unrelated]);
+});
+
+for (const pending of ["{", "null"]) {
+  test(`malformed pending OAuth state cannot restore a draft: ${pending}`, () => {
+    const service = loadUserService();
+    const state = new URL(
+      service.getAuthorizeUrl("app", oauthScope, "private draft"),
+    ).searchParams.get("state");
+    const key = [...service.storage.keys()][0];
+    service.storage.set(key, pending);
+    service.location.search = `?code=grant&state=${state}`;
+    assert.throws(
+      () => service.consumeOAuthCallback("app", oauthScope),
+      /state/i,
+    );
+    assert.equal(service.storage.size, 0);
+  });
+}
+
+for (const [name, mutate] of [
+  ["non-string draft", (pending) => ({ ...pending, draft: { text: "draft" } })],
+  [
+    "missing draft",
+    (pending) => {
+      delete pending.draft;
+      return pending;
+    },
+  ],
+  ["non-number expiry", (pending) => ({ ...pending, expiresAt: "infinite" })],
+]) {
+  test(`rejects ${name} in otherwise matching OAuth state`, () => {
+    const service = loadUserService();
+    const state = new URL(
+      service.getAuthorizeUrl("app", oauthScope, "private draft"),
+    ).searchParams.get("state");
+    const key = [...service.storage.keys()][0];
+    service.storage.set(
+      key,
+      JSON.stringify(mutate(JSON.parse(service.storage.get(key)))),
+    );
+    service.location.search = `?code=grant&state=${state}`;
+    assert.throws(
+      () => service.consumeOAuthCallback("app", oauthScope),
+      /state/i,
+    );
+    assert.equal(service.storage.size, 0);
+  });
+}
 
 for (const auth of [
   { proxy: "/oauth/access_token" },
@@ -307,7 +510,10 @@ for (const response of [
   });
 }
 
-const loadGitalk = (consumeOAuthCallback = () => undefined) => {
+const loadGitalk = (
+  consumeOAuthCallback = () => undefined,
+  getAuthorizeUrl = () => "https://github.com/login/oauth/authorize",
+) => {
   const requests = [];
   const states = [];
   const refs = [];
@@ -433,7 +639,7 @@ const loadGitalk = (consumeOAuthCallback = () => undefined) => {
         };
       if (path === "./services/user")
         return {
-          getAuthorizeUrl: () => "https://github.com/login/oauth/authorize",
+          getAuthorizeUrl,
           consumeOAuthCallback,
           getAccessToken: async (options) => {
             exchanged.push(options);
@@ -468,8 +674,134 @@ const loadGitalk = (consumeOAuthCallback = () => undefined) => {
     clients,
     effects,
     states,
+    location,
   };
 };
+
+const findTextarea = (tree) => {
+  if (!tree || typeof tree !== "object") return undefined;
+  if (tree.props && "value" in tree.props && tree.props.onChange) return tree;
+  for (const child of [tree.children].flat(Infinity)) {
+    const result = findTextarea(child);
+    if (result) return result;
+  }
+};
+
+test("login preserves the current draft and full article scope for its callback", () => {
+  const service = loadUserService();
+  const app = loadGitalk(undefined, (...args) =>
+    service.getAuthorizeUrl(...args),
+  );
+  const id = "site.example/" + "long-article/".repeat(10);
+  const props = {
+    clientID: "public",
+    proxy: "/oauth/access_token",
+    owner: "owner",
+    repo: "repo",
+    id,
+    number: 42,
+    admin: ["owner"],
+  };
+  app.Gitalk(props);
+  app.requests[3].options.onSuccess({ number: 42, comments: 0 });
+  const textarea = findTextarea(app.Gitalk(props));
+  textarea.props.onChange({ target: { value: "Guest draft\n中文" } });
+  findTextarea(app.Gitalk(props)).props.onLogin();
+  const state = new URL(app.location.href).searchParams.get("state");
+  assert.match(state, /^[a-f0-9]{64}$/);
+  service.location.search = `?code=grant&state=${state}`;
+  const callback = service.consumeOAuthCallback("public", {
+    owner: "owner",
+    repo: "repo",
+    id,
+    number: 42,
+  });
+  assert.equal(callback.draft, "Guest draft\n中文");
+  assert.equal(app.storage.size, 0);
+});
+
+test("validated drafts render before token exchange and survive an exchange error", () => {
+  const service = loadUserService();
+  const state = new URL(
+    service.getAuthorizeUrl("public", oauthScope, "Recovered draft"),
+  ).searchParams.get("state");
+  service.location.search = `?code=grant&state=${state}`;
+  const app = loadGitalk((...args) => service.consumeOAuthCallback(...args));
+  const props = {
+    clientID: "public",
+    proxy: "/oauth/access_token",
+    owner: "owner",
+    repo: "repo",
+    admin: ["owner"],
+  };
+  app.Gitalk(props);
+  app.requests[3].options.onSuccess({ number: 1, comments: 0 });
+  app.effects[0]();
+  assert.equal(findTextarea(app.Gitalk(props)).props.value, "Recovered draft");
+  assert.deepEqual(app.requests[0].runs, [["grant"]]);
+  app.requests[0].options.onError(new Error("Token exchange failed"));
+  assert.equal(findTextarea(app.Gitalk(props)).props.value, "Recovered draft");
+  assert.equal(service.storage.size, 0);
+});
+
+test("validated login denial restores the draft and displays the reason without token exchange", () => {
+  const service = loadUserService();
+  const state = new URL(
+    service.getAuthorizeUrl("public", oauthScope, "Draft before denied login"),
+  ).searchParams.get("state");
+  service.location.search = `?error=access_denied&error_description=User+denied&state=${state}`;
+  const app = loadGitalk((...args) => service.consumeOAuthCallback(...args));
+  const props = {
+    clientID: "public",
+    proxy: "/oauth/access_token",
+    owner: "owner",
+    repo: "repo",
+    admin: ["owner"],
+  };
+  app.Gitalk(props);
+  app.requests[3].options.onSuccess({ number: 1, comments: 0 });
+  app.effects[0]();
+  assert.equal(
+    findTextarea(app.Gitalk(props)).props.value,
+    "Draft before denied login",
+  );
+  assert.ok(
+    app.states.some(
+      (value) => typeof value === "string" && value.includes("User denied"),
+    ),
+  );
+  assert.deepEqual(app.requests[0].runs, []);
+  assert.equal(service.storage.size, 0);
+  assert.equal(service.location.search, "");
+});
+
+test("a callback cannot replace text edited before the authorization effect runs", () => {
+  const service = loadUserService();
+  const state = new URL(
+    service.getAuthorizeUrl("public", oauthScope, "Older saved draft"),
+  ).searchParams.get("state");
+  service.location.search = `?code=grant&state=${state}`;
+  const app = loadGitalk((...args) => service.consumeOAuthCallback(...args));
+  const props = {
+    clientID: "public",
+    proxy: "/oauth/access_token",
+    owner: "owner",
+    repo: "repo",
+    admin: ["owner"],
+  };
+  app.Gitalk(props);
+  app.requests[3].options.onSuccess({ number: 1, comments: 0 });
+  findTextarea(app.Gitalk(props)).props.onChange({
+    target: { value: "Newer unsaved draft" },
+  });
+  app.effects[0]();
+  assert.equal(
+    findTextarea(app.Gitalk(props)).props.value,
+    "Newer unsaved draft",
+  );
+  assert.deepEqual(app.requests[0].runs, [["grant"]]);
+  assert.equal(service.storage.size, 0);
+});
 
 test("401 clears a freshly exchanged session and pending authenticated requests", () => {
   const app = loadGitalk();
@@ -559,7 +891,7 @@ test("a valid callback exchanges once and does not loop when the effect runs aga
   const app = loadGitalk(() => {
     const result = code;
     code = undefined;
-    return result;
+    return result ? { code: result, draft: "" } : undefined;
   });
   const props = {
     clientID: "public",
@@ -586,11 +918,11 @@ for (const auth of [
 ]) {
   test(`a validated callback replaces a cached token with ${Object.keys(auth)[0]}`, async () => {
     const service = loadUserService();
-    const state = new URL(service.getAuthorizeUrl("public")).searchParams.get(
-      "state",
-    );
+    const state = new URL(
+      service.getAuthorizeUrl("public", oauthScope, ""),
+    ).searchParams.get("state");
     service.location.search = `?code=grant&state=${state}`;
-    const app = loadGitalk(() => service.consumeOAuthCallback("public"));
+    const app = loadGitalk((...args) => service.consumeOAuthCallback(...args));
     const props = {
       clientID: "public",
       owner: "owner",

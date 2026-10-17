@@ -228,6 +228,31 @@ test("the editor has a persistent accessible name and a named login button", () 
   );
 });
 
+test("anonymous users can choose either comment sort direction from the popup", () => {
+  const directions = [];
+  const menu = mount(
+    "components/meta.tsx",
+    {
+      commentsCount: 5,
+      pagerDirection: "last",
+      onPagerDirectionChange: (direction) => directions.push(direction),
+      onLogin() {},
+    },
+    { document: { addEventListener() {}, removeEventListener() {} } },
+  );
+  find(menu.render(), "gt-user-inner").props.onClick();
+  const popup = menu.render();
+  const ascending = find(popup, "gt-action-sortasc");
+  const descending = find(popup, "gt-action-sortdesc");
+  assert.ok(ascending);
+  assert.ok(descending);
+  ascending.props.onClick();
+  descending.props.onClick();
+  assert.deepEqual(directions, ["first", "last"]);
+  assert.ok(find(popup, "gt-action-login"));
+  menu.unmount();
+});
+
 test("popup listeners survive rerenders and are removed on close and unmount", () => {
   const listeners = new Map();
   const document = {
@@ -326,7 +351,13 @@ test("authorization URLs encode client values and preserve the full redirect URL
     sessionStorage: { setItem() {} },
     window: { location: { href: redirect } },
   });
-  const url = new URL(getAuthorizeUrl("client+with space&="));
+  const url = new URL(
+    getAuthorizeUrl(
+      "client+with space&=",
+      { owner: "owner", repo: "repo", id: "article" },
+      "",
+    ),
+  );
   assert.equal(url.searchParams.get("client_id"), "client+with space&=");
   assert.equal(url.searchParams.get("redirect_uri"), redirect);
   assert.equal(

@@ -1,6 +1,21 @@
 import { DEFAULT_PROXY } from "../constants";
 
-const stateKey = (clientID: string) => `GT_OAUTH_STATE:${clientID}`;
+export interface OAuthScope {
+  owner: string;
+  repo: string;
+  id: string;
+  number?: number;
+}
+
+const stateKeyPrefix = "GT_OAUTH_STATE:";
+const stateKey = (clientID: string, scope: OAuthScope) =>
+  `${stateKeyPrefix}${JSON.stringify([
+    clientID,
+    scope.owner,
+    scope.repo,
+    scope.id,
+    scope.number ?? null,
+  ])}`;
 const callbackParams = [
   "code",
   "state",
@@ -9,13 +24,17 @@ const callbackParams = [
   "error_uri",
 ];
 
-export const getAuthorizeUrl = (clientID: string) => {
+export const getAuthorizeUrl = (
+  clientID: string,
+  scope: OAuthScope,
+  draft: string,
+) => {
   const state = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");
   sessionStorage.setItem(
-    stateKey(clientID),
-    JSON.stringify({ state, expiresAt: Date.now() + 10 * 60 * 1000 }),
+    stateKey(clientID, scope),
+    JSON.stringify({ state, draft, expiresAt: Date.now() + 10 * 60 * 1000 }),
   );
   const query = {
     client_id: clientID,
@@ -26,7 +45,13 @@ export const getAuthorizeUrl = (clientID: string) => {
   return `https://github.com/login/oauth/authorize?${new URLSearchParams(query)}`;
 };
 
-export const consumeOAuthCallback = (clientID: string): string | undefined => {
+export const consumeOAuthCallback = (
+  clientID: string,
+  scope: OAuthScope,
+):
+  | { code: string; draft: string }
+  | { error: string; draft: string }
+  | undefined => {
   const url = new URL(window.location.href);
   const query = url.searchParams;
   if (!query.has("code") && !query.has("error")) return;
@@ -35,10 +60,22 @@ export const consumeOAuthCallback = (clientID: string): string | undefined => {
   const states = query.getAll("state");
   const errors = query.getAll("error");
   const description = query.get("error_description");
+  const key = stateKey(clientID, scope);
+  if (states.length === 1 && states[0]) {
+    for (let index = 0; index < sessionStorage.length; index += 1) {
+      const otherKey = sessionStorage.key(index);
+      if (!otherKey?.startsWith(stateKeyPrefix) || otherKey === key) continue;
+      try {
+        const other = JSON.parse(sessionStorage.getItem(otherKey) ?? "null");
+        if (other?.state === states[0]) return;
+      } catch {
+        // Ignore unparsable records when looking for the callback's owner.
+      }
+    }
+  }
   callbackParams.forEach((key) => query.delete(key));
   history.replaceState(null, "", url.toString());
 
-  const key = stateKey(clientID);
   const stored = sessionStorage.getItem(key);
   sessionStorage.removeItem(key);
   let pending;
@@ -52,17 +89,22 @@ export const consumeOAuthCallback = (clientID: string): string | undefined => {
     !states[0] ||
     pending?.state !== states[0] ||
     typeof pending?.expiresAt !== "number" ||
-    pending.expiresAt <= Date.now()
+    !Number.isFinite(pending.expiresAt) ||
+    pending.expiresAt <= Date.now() ||
+    typeof pending?.draft !== "string"
   ) {
     throw new Error("Invalid or expired OAuth state; please log in again");
   }
   if (errors.length === 1 && codes.length === 0) {
-    throw new Error(description || errors[0] || "OAuth authorization denied");
+    return {
+      error: description || errors[0] || "OAuth authorization denied",
+      draft: pending.draft,
+    };
   }
   if (codes.length !== 1 || !codes[0] || errors.length) {
     throw new Error("Invalid OAuth callback; please log in again");
   }
-  return codes[0];
+  return { code: codes[0], draft: pending.draft };
 };
 
 export const getAccessToken = async ({

@@ -103,6 +103,7 @@ const mountGitalk = ({ authenticated = false, ...initialProps } = {}) => {
   const storage = new Map(authenticated ? [["GT_ACCESS_TOKEN", "token"]] : []);
   const context = vm.createContext({
     console,
+    URL,
     setTimeout,
     clearTimeout,
     location: { host: "site.example", pathname: "/article" },
@@ -456,7 +457,7 @@ for (const pagerDirection of ["first", "last"]) {
 
 for (const issueComments of [0, 50]) {
   test(`REST pagination follows next links when the initial count is ${issueComments}`, async () => {
-    const app = await openArticle({ issueComments });
+    const app = await openArticle({ issueComments, pagerDirection: "first" });
     app.calls
       .find((call) => call.route === commentsRoute)
       .resolve({
@@ -478,6 +479,209 @@ for (const issueComments of [0, 50]) {
     app.unmount();
   });
 }
+
+const restPage = (ids, links = {}) => ({
+  status: 200,
+  headers: {
+    link: Object.entries(links)
+      .map(
+        ([relation, page]) =>
+          `<https://api.github.com/comments?page=${page}>; rel="${relation}"`,
+      )
+      .join(", "),
+  },
+  data: ids.map((id) => ({ id })),
+});
+
+test("anonymous newest-first pagination starts at the final page and walks backward", async () => {
+  const app = await openArticle({ issueComments: 5, perPage: 2 });
+  const last = app.calls.find((call) => call.route === commentsRoute);
+  assert.equal(last.params.page, 3);
+  last.resolve(restPage([5], { prev: 2, first: 1 }));
+  await app.settle();
+  assert.deepEqual(
+    Array.from(
+      app.component("comments-list").comments,
+      (comment) => comment.id,
+    ),
+    [5],
+  );
+  assert.equal(app.component("comments-list").hasMoreComments, true);
+  app.component("comments-list").onGetComments();
+  const previous = app.calls.at(-1);
+  assert.equal(previous.params.page, 2);
+  previous.resolve(restPage([3, 4], { prev: 1, next: 3, last: 3 }));
+  await app.settle();
+  app.component("comments-list").onGetComments();
+  assert.equal(app.calls.at(-1).params.page, 1);
+  app.calls.at(-1).resolve(restPage([1, 2], { next: 2, last: 3 }));
+  await app.settle();
+  const list = app.component("comments-list");
+  assert.deepEqual(
+    Array.from(list.comments, (comment) => comment.id),
+    [5, 4, 3, 2, 1],
+  );
+  assert.equal(list.hasMoreComments, false);
+  assert.equal(list.commentsCount, 5);
+  app.unmount();
+});
+
+test("anonymous newest-first pagination discovers newer pages from Link when the count is stale", async () => {
+  const app = await openArticle({ issueComments: 0, perPage: 2 });
+  app.calls
+    .find((call) => call.route === commentsRoute)
+    .resolve(restPage([1, 2], { next: 2, last: 3 }));
+  await app.settle();
+  const last = app.calls.at(-1);
+  assert.equal(last.params.page, 3);
+  assert.equal(app.component("comments-list").comments.length, 0);
+  last.resolve(restPage([5], { prev: 2, first: 1 }));
+  await app.settle();
+  assert.deepEqual(
+    Array.from(
+      app.component("comments-list").comments,
+      (comment) => comment.id,
+    ),
+    [5],
+  );
+  app.unmount();
+});
+
+test("anonymous pagination follows the server's previous page and deduplicates overlapping comments", async () => {
+  const app = await openArticle({ issueComments: 8, perPage: 2 });
+  app.calls
+    .find((call) => call.route === commentsRoute)
+    .resolve(restPage([7, 8], { prev: 2, first: 1 }));
+  await app.settle();
+  app.component("comments-list").onGetComments();
+  assert.equal(app.calls.at(-1).params.page, 2);
+  app.calls.at(-1).resolve(restPage([6, 7], { prev: 1, next: 4 }));
+  await app.settle();
+  assert.deepEqual(
+    Array.from(
+      app.component("comments-list").comments,
+      (comment) => comment.id,
+    ),
+    [8, 7, 6],
+  );
+  app.unmount();
+});
+
+for (const [issueComments, links] of [
+  [5, { prev: 2, last: 2 }],
+  [5, {}],
+  [200000, {}],
+  [200000, { prev: 99999 }],
+]) {
+  test(`an empty deleted final REST page is skipped (${issueComments}, ${JSON.stringify(links)})`, async () => {
+    const app = await openArticle({ issueComments, perPage: 2 });
+    app.calls
+      .find((call) => call.route === commentsRoute)
+      .resolve(restPage([], links));
+    await app.settle();
+    if (!links.last) {
+      assert.equal(app.calls.at(-1).params.page, 1);
+      app.calls.at(-1).resolve(restPage([1, 2], { next: 2, last: 2 }));
+      await app.settle();
+    }
+    assert.equal(app.calls.at(-1).params.page, 2);
+    app.calls.at(-1).resolve(restPage([3, 4], { prev: 1, first: 1 }));
+    await app.settle();
+    assert.deepEqual(
+      Array.from(
+        app.component("comments-list").comments,
+        (comment) => comment.id,
+      ),
+      [4, 3],
+    );
+    assert.equal(app.component("comments-list").hasMoreComments, true);
+    assert.equal(
+      app.calls.filter((call) => call.route === commentsRoute).length,
+      links.last ? 2 : 3,
+    );
+    app.unmount();
+  });
+}
+
+test("a direction change restarts anonymous pagination at the oldest page", async () => {
+  const app = await openArticle({ issueComments: 5, perPage: 2 });
+  app.calls
+    .find((call) => call.route === commentsRoute)
+    .resolve(restPage([5], { prev: 2 }));
+  await app.settle();
+  app.component("meta").onPagerDirectionChange("first");
+  await app.settle();
+  const first = app.calls.at(-1);
+  assert.equal(first.params.page, 1);
+  assert.equal(app.component("comments-list").comments.length, 0);
+  first.resolve(restPage([1, 2], { next: 2, last: 3 }));
+  await app.settle();
+  assert.deepEqual(
+    Array.from(
+      app.component("comments-list").comments,
+      (comment) => comment.id,
+    ),
+    [1, 2],
+  );
+  app.unmount();
+});
+
+test("anonymous newest-first pagination stops when an empty first page has no links", async () => {
+  const app = await openArticle({ issueComments: 0 });
+  app.calls.find((call) => call.route === commentsRoute).resolve(restPage([]));
+  await app.settle();
+  assert.equal(app.component("comments-list").comments.length, 0);
+  assert.equal(app.component("comments-list").hasMoreComments, false);
+  assert.equal(
+    app.calls.filter((call) => call.route === commentsRoute).length,
+    1,
+  );
+  app.unmount();
+});
+
+test("a throwing onCreateComment callback cannot preserve a successfully submitted draft for retry", async () => {
+  const app = await openArticle({
+    authenticated: true,
+    onCreateComment: () => {
+      throw new Error("Consumer callback failed");
+    },
+  });
+  app.type("already posted");
+  const pending = app.component("comment-textarea").onCreateComment();
+  app.calls
+    .find((call) => call.route === submitRoute)
+    .resolve({ status: 201, data: { id: 30 } });
+  await pending;
+  await app.settle();
+  assert.equal(app.component("comment-textarea").value, "");
+  assert.deepEqual(
+    Array.from(
+      app.component("comments-list").comments,
+      (comment) => comment.id,
+    ),
+    [30],
+  );
+  assert.equal(app.component("comments-list").commentsCount, 4);
+  await app.component("comment-textarea").onCreateComment();
+  assert.equal(
+    app.calls.filter((call) => call.route === submitRoute).length,
+    1,
+  );
+  app.unmount();
+});
+
+test("a throwing count callback cannot prevent a discussion from loading", async () => {
+  let calls = 0;
+  const app = await openArticle({
+    updateCountCallback: () => {
+      calls += 1;
+      throw new Error("Consumer count failed");
+    },
+  });
+  assert.ok(calls > 0);
+  assert.ok(app.component("comments-list"));
+  app.unmount();
+});
 
 for (const [like, hearts] of [
   [true, 1],
@@ -751,7 +955,7 @@ test("scope changes cancel old responses before passive effects run", async () =
 });
 
 test("an old REST page cannot change the new article's comments or page", async () => {
-  const app = await openArticle();
+  const app = await openArticle({ pagerDirection: "first" });
   const oldPage = app.calls.find((call) => call.route === commentsRoute);
   app.switchArticle({ number: 2 });
   app.calls
@@ -763,9 +967,9 @@ test("an old REST page cannot change the new article's comments or page", async 
   const newPage = app.calls.find(
     (call) => call.route === commentsRoute && call.params.issue_number === 2,
   );
-  newPage.resolve({ status: 200, data: [{ id: 20 }] });
+  newPage.resolve(restPage([20], { next: 2 }));
   await app.settle();
-  oldPage.resolve({ status: 200, data: [{ id: 10 }] });
+  oldPage.resolve(restPage([10], { next: 99 }));
   await app.settle();
   assert.deepEqual(
     Array.from(

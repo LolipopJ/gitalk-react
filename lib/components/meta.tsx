@@ -77,26 +77,20 @@ const Meta: React.FC<MetaProps> = (props) => {
       />
       {showPopup && (
         <div className="gt-popup" ref={popupRef}>
-          {user
-            ? [
-                <Action
-                  key="sort-asc"
-                  className={cn("gt-action-sortasc", {
-                    "is--active": pagerDirection === "first",
-                  })}
-                  onClick={() => onPagerDirectionChange("first")}
-                  text={polyglot.t("sort-asc")}
-                />,
-                <Action
-                  key="sort-desc"
-                  className={cn("gt-action-sortdesc", {
-                    "is--active": pagerDirection === "last",
-                  })}
-                  onClick={() => onPagerDirectionChange("last")}
-                  text={polyglot.t("sort-desc")}
-                />,
-              ]
-            : null}
+          <Action
+            className={cn("gt-action-sortasc", {
+              "is--active": pagerDirection === "first",
+            })}
+            onClick={() => onPagerDirectionChange("first")}
+            text={polyglot.t("sort-asc")}
+          />
+          <Action
+            className={cn("gt-action-sortdesc", {
+              "is--active": pagerDirection === "last",
+            })}
+            onClick={() => onPagerDirectionChange("last")}
+            text={polyglot.t("sort-desc")}
+          />
           {user ? (
             <Action
               className="gt-action-logout"

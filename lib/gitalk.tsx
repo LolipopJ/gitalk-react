@@ -43,6 +43,16 @@ import logger from "./utils/logger";
 
 const isModernBrowser = supportsCSSVariables() && supportsES2020();
 
+const getPageFromLink = (
+  link: string | undefined,
+  relation: "next" | "prev" | "last",
+) => {
+  const url = link?.match(new RegExp(`<([^>]+)>;\\s*rel="${relation}"`))?.[1];
+  if (!url) return undefined;
+  const page = Number(new URL(url).searchParams.get("page"));
+  return Number.isInteger(page) && page > 0 ? page : undefined;
+};
+
 const Gitalk: React.FC<GitalkProps> = (props) => {
   const {
     clientID,
@@ -84,6 +94,10 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     [propsIssueNumber],
   );
   const issueId = useMemo(() => propsIssueId.slice(0, 50), [propsIssueId]);
+  const oauthScope = useMemo(
+    () => ({ owner, repo, id: propsIssueId, number: issueNumber }),
+    [owner, repo, propsIssueId, issueNumber],
+  );
   const issueLabels = useMemo(
     () => propsIssueLabels.concat([issueId]),
     [propsIssueLabels, issueId],
@@ -114,7 +128,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   const [localComments, setLocalComments] = useState<CommentType[]>([]);
   const commentCreationVersionRef = useRef(0);
   const [commentsCursor, setCommentsCursor] = useState("");
-  const [commentsPage, setCommentsPage] = useState<number>(1);
+  const [commentsPage, setCommentsPage] = useState<number>();
   const [hasMoreComments, setHasMoreComments] = useState(true);
   const commentsPerPage = useMemo(
     () =>
@@ -123,7 +137,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         : 10,
     [propsPerPage],
   );
-  /** Current sort order, have effect when user is logged */
+  /** Current sort order. */
   const [commentsPagerDirection, setCommentsPagerDirection] =
     useState(pagerDirection);
   const defaultUser = useMemo(
@@ -181,7 +195,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     setLocalComments([]);
     commentCreationVersionRef.current = 0;
     setCommentsCursor("");
-    setCommentsPage(1);
+    setCommentsPage(undefined);
     setHasMoreComments(true);
   });
 
@@ -211,12 +225,19 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   useEffect(() => {
     try {
-      const code = consumeOAuthCallback(clientID);
-      if (code) runGetAccessToken(code);
+      const callback = consumeOAuthCallback(clientID, oauthScope);
+      if (callback) {
+        if (draftVersionRef.current === 0) updateInputComment(callback.draft);
+        if ("error" in callback) {
+          setAlert(`An error occurred while authorizing: ${callback.error}`);
+        } else {
+          runGetAccessToken(callback.code);
+        }
+      }
     } catch (error) {
       setAlert(`An error occurred while authorizing: ${error}`);
     }
-  }, [clientID, runGetAccessToken]);
+  }, [clientID, oauthScope, runGetAccessToken, updateInputComment]);
 
   const octokit = useMemo(
     () => getOctokitInstance(accessToken, () => clearSession(accessToken)),
@@ -283,7 +304,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         !!isAdmin && !!owner && !!repo && !!issueTitle && !!issueLabels.length,
       onSuccess: (createdIssue) => {
         setIssue(createdIssue);
-        onCreateIssue?.(createdIssue);
+        try {
+          onCreateIssue?.(createdIssue);
+        } catch (error) {
+          logger.e("onCreateIssue callback failed:", error);
+        }
       },
       onError: (error) => {
         setAlert(error.message);
@@ -325,6 +350,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
             owner,
             repo,
             labels: issueLabels.join(","),
+            state: "all",
             per_page: 1,
           },
         );
@@ -377,11 +403,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     }> => {
       const creationVersion = commentCreationVersionRef.current;
       const { number: currentIssueNumber } = issue as IssueType;
-      const from = (commentsPage - 1) * commentsPerPage + 1;
-      const to = commentsPage * commentsPerPage;
+      const from = ((commentsPage ?? 1) - 1) * commentsPerPage + 1;
+      const to = (commentsPage ?? 1) * commentsPerPage;
 
       if (user) {
-        // Get comments via GraphQL, witch requires being logged and able to sort
+        // Get comments via GraphQL, which requires being logged in.
         const query = getIssueCommentsQL({
           pagerDirection: commentsPagerDirection,
         });
@@ -448,20 +474,51 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           );
         }
       } else {
-        // Get comments via RESTful API, which not need be logged but unable to sort
-        const getIssueCommentsRes = await octokit.request(
-          "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
-          {
-            owner,
-            repo,
-            issue_number: currentIssueNumber,
-            page: commentsPage,
-            per_page: commentsPerPage,
-            headers: {
-              accept: "application/vnd.github.v3.full+json",
+        // REST pages are always ascending; newest-first starts at the last page.
+        const newestFirst = commentsPagerDirection === "last";
+        let page =
+          commentsPage ??
+          (newestFirst
+            ? Math.max(1, Math.ceil((issue?.comments ?? 0) / commentsPerPage))
+            : 1);
+        const requestPage = (page: number) =>
+          octokit.request(
+            "GET /repos/{owner}/{repo}/issues/{issue_number}/comments",
+            {
+              owner,
+              repo,
+              issue_number: currentIssueNumber,
+              page,
+              per_page: commentsPerPage,
+              headers: {
+                accept: "application/vnd.github.v3.full+json",
+              },
             },
-          },
-        );
+          );
+
+        let getIssueCommentsRes = await requestPage(page);
+        const visitedPages = new Set([page]);
+        while (newestFirst) {
+          const link = getIssueCommentsRes.headers?.link;
+          const lastPage = getPageFromLink(link, "last");
+          const newestPage =
+            commentsPage === undefined
+              ? (lastPage ?? getPageFromLink(link, "next"))
+              : undefined;
+          let retryPage = newestPage !== page ? newestPage : undefined;
+          if (
+            retryPage === undefined &&
+            !getIssueCommentsRes.data.length &&
+            page > 1
+          ) {
+            // A page-one probe recovers stale totals without walking empty pages.
+            retryPage = lastPage && lastPage < page ? lastPage : 1;
+          }
+          if (retryPage === undefined || visitedPages.has(retryPage)) break;
+          page = retryPage;
+          visitedPages.add(page);
+          getIssueCommentsRes = await requestPage(page);
+        }
 
         const _comments = getIssueCommentsRes.data.map((comment) => {
           const reactionsHeartTotalCount = comment.reactions?.heart ?? 0;
@@ -477,18 +534,24 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         });
         logger.s(`Get comments from ${from} to ${to} successfully:`, _comments);
 
-        const hasMore = /<[^>]+>;\s*rel="next"/.test(
-          getIssueCommentsRes.headers?.link ?? "",
+        const nextPage = getPageFromLink(
+          getIssueCommentsRes.headers?.link,
+          newestFirst ? "prev" : "next",
         );
+        const hasMore = nextPage !== undefined;
         return {
           comments: _comments,
           creationVersion,
-          page: commentsPage + 1,
+          page: nextPage,
           hasMore,
-          totalCount: hasMore
-            ? undefined
-            : new Set([...comments, ..._comments].map((comment) => comment.id))
-                .size,
+          totalCount:
+            newestFirst && commentsPage === undefined
+              ? (page - 1) * commentsPerPage + _comments.length
+              : hasMore
+                ? undefined
+                : new Set(
+                    [...comments, ..._comments].map((comment) => comment.id),
+                  ).size,
         };
       }
     },
@@ -497,7 +560,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       ready: !!owner && !!repo && !!issue && !getUserLoading,
       onSuccess: (result) => {
         setComments((previous) =>
-          user && commentsPagerDirection === "last"
+          commentsPagerDirection === "last"
             ? [...result.comments, ...previous]
             : [...previous, ...result.comments],
         );
@@ -565,7 +628,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         commentCreationVersionRef.current += 1;
         setLocalComments((prev) => prev.concat(createdComment));
         setCommentsCount((prev) => prev + 1);
-        onCreateComment?.(createdComment);
+        try {
+          onCreateComment?.(createdComment);
+        } catch (error) {
+          logger.e("onCreateComment callback failed:", error);
+        }
       },
       onError: (error) => {
         setAlert(error.message);
@@ -611,7 +678,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     setLocalComments([]);
     setCommentsCount(0);
     setCommentsCursor("");
-    setCommentsPage(1);
+    setCommentsPage(undefined);
     setHasMoreComments(true);
     setAlert("");
     return () => {
@@ -637,7 +704,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   useEffect(() => {
     setComments([]);
     setCommentsCursor("");
-    setCommentsPage(1);
+    setCommentsPage(undefined);
     setHasMoreComments(true);
 
     const timer = setTimeout(() => {
@@ -670,16 +737,20 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       }
     }
 
-    if (!!user && commentsPagerDirection === "last") {
+    if (commentsPagerDirection === "last") {
       // sort comments by date DESC
       _loadedComments.reverse();
     }
 
     return _loadedComments;
-  }, [comments, commentsPagerDirection, localComments, user]);
+  }, [comments, commentsPagerDirection, localComments]);
 
   useEffect(() => {
-    updateCountCallback?.(commentsCount);
+    try {
+      updateCountCallback?.(commentsCount);
+    } catch (error) {
+      logger.e("updateCountCallback failed:", error);
+    }
   }, [commentsCount, updateCountCallback]);
 
   const {
@@ -750,7 +821,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
 
   const onLogin = () => {
     try {
-      window.location.href = getAuthorizeUrl(clientID);
+      window.location.href = getAuthorizeUrl(
+        clientID,
+        oauthScope,
+        inputComment,
+      );
     } catch (error) {
       setAlert(`An error occurred while authorizing: ${error}`);
     }

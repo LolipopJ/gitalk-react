@@ -300,6 +300,61 @@ const requestError = (status, message) =>
     request: { method: "GET", url: "https://api.github.com", headers: {} },
   });
 
+for (const authenticated of [false, true]) {
+  test(`closed issues found by label remain the discussion without duplicate initialization (${authenticated})`, async () => {
+    const app = mountGitalk({ authenticated, number: undefined });
+    if (authenticated) {
+      app.calls
+        .find((call) => call.route === "GET /user")
+        .resolve({ status: 200, data: { login: "admin" } });
+      await app.settle();
+    }
+    const lookup = app.calls
+      .filter((call) => call.route === issuesRoute)
+      .at(-1);
+    lookup.resolve({
+      status: 200,
+      data:
+        lookup.params.state === "all"
+          ? [{ number: 7, state: "closed", comments: 0 }]
+          : [],
+    });
+    await app.settle();
+    assert.equal(app.component("meta")?.issue?.number, 7);
+    assert.equal(
+      app.calls.filter((call) => call.route === createIssueRoute).length,
+      0,
+    );
+    app.unmount();
+  });
+}
+
+test("a throwing onCreateIssue callback does not report successful initialization as a failure", async () => {
+  const app = mountGitalk({
+    authenticated: true,
+    number: undefined,
+    onCreateIssue: () => {
+      throw new Error("Consumer issue failed");
+    },
+  });
+  app.calls
+    .find((call) => call.route === "GET /user")
+    .resolve({ status: 200, data: { login: "admin" } });
+  await app.settle();
+  app.calls
+    .filter((call) => call.route === issuesRoute)
+    .at(-1)
+    .resolve({ status: 200, data: [] });
+  await app.settle();
+  app.calls
+    .find((call) => call.route === createIssueRoute)
+    .resolve({ status: 201, data: { number: 7, comments: 0 } });
+  await app.settle();
+  assert.equal(app.component("meta")?.issue?.number, 7);
+  assert.equal(alertText(app), undefined);
+  app.unmount();
+});
+
 test("a missing numbered issue is handled as an uninitialized discussion", async () => {
   const app = mountGitalk({ createIssueManually: true });
   app.calls
