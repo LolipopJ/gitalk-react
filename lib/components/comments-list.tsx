@@ -55,6 +55,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
       comment={comment}
       isAuthor={isAuthor}
       isAdmin={isAdmin}
+      canReact={!!user}
       onReaction={(add, content) => {
         onReaction(add, content, commentId);
       }}

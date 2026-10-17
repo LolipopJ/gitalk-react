@@ -183,6 +183,7 @@ test("comment actions and expansion use named buttons and reflect like state", (
   let replied;
   const props = {
     comment,
+    canReact: true,
     collapsedHeight: 100,
     onReaction: (...args) => {
       liked = args;
@@ -410,6 +411,7 @@ test("all eight reaction controls expose exact counts, viewer states and content
   const actions = [];
   const props = {
     reactions,
+    canReact: true,
     onReaction: (...args) => actions.push(args),
   };
   const comment = mount("components/reactions.tsx", props);
@@ -431,7 +433,11 @@ test("reaction picker hides empty counts and offers all eight reactions in its m
   const reactions = reactionsFromRest();
   reactions.HEART = { totalCount: 1, viewerHasReacted: true };
   const actions = [];
-  const props = { reactions, onReaction: (...args) => actions.push(args) };
+  const props = {
+    reactions,
+    canReact: true,
+    onReaction: (...args) => actions.push(args),
+  };
   const picker = mount("components/reactions.tsx", props, {
     document: { addEventListener() {}, removeEventListener() {} },
   });
@@ -496,6 +502,7 @@ test("horizontal reaction menu manages keyboard focus, outside clicks and cleanu
   let triggerFocus = 0;
   const props = {
     reactions: loadSource("utils/reactions.ts").reactionsFromRest(),
+    canReact: true,
     onReaction() {},
   };
   const picker = mount("components/reactions.tsx", props, { document });
@@ -559,7 +566,7 @@ test("loading disables both reaction chips and menu choices", () => {
     heart: 1,
   });
   let calls = 0;
-  const props = { reactions, onReaction: () => calls++ };
+  const props = { reactions, canReact: true, onReaction: () => calls++ };
   const picker = mount("components/reactions.tsx", props, {
     document: { addEventListener() {}, removeEventListener() {} },
   });
@@ -582,6 +589,78 @@ test("loading disables both reaction chips and menu choices", () => {
   picker.unmount();
 });
 
+test("anonymous reactions are read-only and an open menu disappears on logout", () => {
+  const listeners = new Set();
+  const document = {
+    addEventListener: (_type, listener) => listeners.add(listener),
+    removeEventListener: (_type, listener) => listeners.delete(listener),
+  };
+  const reactions = loadSource("utils/reactions.ts").reactionsFromRest({
+    heart: 3,
+  });
+  let calls = 0;
+  const props = { reactions, canReact: false, onReaction: () => calls++ };
+  const picker = mount("components/reactions.tsx", props, { document });
+  let view = picker.render();
+  assert.equal(find(view, "gt-reaction-add"), undefined);
+  const count = find(view, "gt-comment-reaction");
+  assert.equal(count.type, "span");
+  assert.equal(count.props["aria-label"], "Heart: 3");
+  assert.equal(count.props.onClick, undefined);
+  view = picker.render({ ...props, canReact: true });
+  find(view, "gt-reaction-add").props.onClick();
+  view = picker.render({ ...props, canReact: true });
+  assert.ok(find(view, "gt-reaction-menu"));
+  assert.equal(listeners.size, 1);
+  view = picker.render(props);
+  assert.equal(find(view, "gt-reaction-add"), undefined);
+  assert.equal(find(view, "gt-reaction-menu"), undefined);
+  assert.equal(listeners.size, 0);
+  view = picker.render({ ...props, canReact: true });
+  assert.equal(find(view, "gt-reaction-menu"), undefined);
+  find(view, "gt-comment-reaction").props.onClick();
+  assert.equal(calls, 1);
+  picker.unmount();
+});
+
+test("comment reaction permission follows the current logged-in user", () => {
+  const reactions = loadSource("utils/reactions.ts").reactionsFromRest({
+    heart: 2,
+  });
+  const comment = {
+    id: 1,
+    body_html: "",
+    created_at: "2026-10-17",
+    html_url: "https://github.com/o/r",
+    user: { login: "author" },
+    reactions,
+  };
+  for (const user of [undefined, { login: "reader" }]) {
+    const list = mount("components/comments-list.tsx", {
+      comments: [comment],
+      commentsCount: 1,
+      admin: [],
+      user,
+      onReaction() {},
+    });
+    const view = list.render();
+    const animated = React.Children.toArray(view.props.children).find(
+      (child) => child.type?.name === "AnimatedComments",
+    );
+    const item = React.Children.toArray(animated.props.children)[0];
+    const renderedComment = item.type(item.props);
+    assert.equal(renderedComment.props.canReact, !!user);
+    const row = mount("components/comment.tsx", renderedComment.props);
+    const content = find(row.render(), "gt-comment-content");
+    const picker = React.Children.toArray(content.props.children).find(
+      (child) => child.type?.name === "Reactions",
+    );
+    assert.equal(picker.props.canReact, !!user);
+    row.unmount();
+    list.unmount();
+  }
+});
+
 test("removing the last reaction retains focus on the available picker trigger", () => {
   const reactions = loadSource("utils/reactions.ts").reactionsFromRest();
   reactions.HEART = { totalCount: 1, viewerHasReacted: true };
@@ -592,7 +671,11 @@ test("removing the last reaction retains focus on the available picker trigger",
     },
   };
   const actions = [];
-  const props = { reactions, onReaction: (...args) => actions.push(args) };
+  const props = {
+    reactions,
+    canReact: true,
+    onReaction: (...args) => actions.push(args),
+  };
   const picker = mount("components/reactions.tsx", props);
   const attach = (view) => {
     find(view, "gt-reaction-add").ref.current = trigger;

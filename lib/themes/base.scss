@@ -151,6 +151,10 @@ $gt-breakpoint-mobile: 480px;
     border: 1px solid currentcolor;
     border-radius: 1em;
 
+    &[role="img"] {
+      cursor: default;
+    }
+
     &[aria-pressed="true"] {
       color: var(--gt-color-main);
       background: var(--gt-color-comment-bg);

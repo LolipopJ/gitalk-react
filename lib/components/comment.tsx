@@ -28,6 +28,7 @@ export interface CommentProps
   comment: CommentType;
   isAuthor: boolean;
   isAdmin: boolean;
+  canReact: boolean;
   onReply: (comment: CommentType) => void;
   onReaction: (
     add: boolean,
@@ -41,6 +42,7 @@ const Comment: React.FC<CommentProps> = ({
   comment,
   isAuthor,
   isAdmin,
+  canReact,
   onReply,
   onReaction,
   reactionLoading,
@@ -171,6 +173,7 @@ const Comment: React.FC<CommentProps> = ({
         />
         <Reactions
           reactions={reactions}
+          canReact={canReact}
           loading={reactionLoading}
           onReaction={(add, content) => onReaction(add, content, comment)}
         />
