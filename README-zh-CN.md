@@ -1,4 +1,9 @@
-基于 GitHub Issue 和 React 的现代评论组件。
+> [!IMPORTANT]
+> 本项目最初是在上游 Gitalk 停止维护而发起的个人重构项目，旨在利用现代前端框架重塑开发流程，在修复已知问题的同时补充个性化功能。自 2026 年 10 月 16 日起，上游项目已由新的维护者接手并发布了 2.0 大版本更新。新版在相似的架构重塑基础上，新增 GitHub Discussions 作为评论后端，并添加了大量实用特性。因此，强烈建议您优先选用上游 [Gitalk](https://github.com/gitalk/gitalk) 作为评论组件。
+>
+> 尽管如此，我仍会继续维护本项目，按需合并上游的部分改进并添加个人所需功能，以满足自身使用场景。感谢您的访问与支持！
+
+基于 GitHub Issues 和 React 的现代评论组件。
 
 [ENGLISH](./README.md) | 简体中文
 
@@ -7,7 +12,7 @@
 [![NPM][npm-version-image]][npm-version-url]
 [![gzip-size][gzip-size]][gzip-url]
 
-使用 TypeScript, React 和 Vite 重新实现 [Gitalk](https://github.com/gitalk/gitalk) —— 基于 Github Issue 的评论组件。
+使用 TypeScript, React 和 Vite 重新实现 [Gitalk 1.x](https://github.com/gitalk/gitalk/tree/v1) —— 基于 Github Issue 的评论组件。
 
 面向现代浏览器开发，致力于减小构建体积，提升开发与使用的体验。
 
@@ -381,19 +386,11 @@ pnpm run lint
 pnpm run build
 ```
 
-## 开发中的功能
-
-- [ ] 特性：支持在 Gitalk React 中编辑用户自己发布的评论。
-- [x] 特性：支持折叠过长的评论，允许用户点击展开。
-- [x] 重构：逐步移除非必要第三方库的依赖，以减小构建体积。
-- [x] 测试：添加自动化测试流程，增强项目健壮性。
-- [x] 杂项：部署[预览环境](https://lolipopj.github.io/gitalk-react/)。
-
 ## 许可证
 
 [MIT](./LICENSE)
 
 [npm-version-image]: https://img.shields.io/npm/v/gitalk-react.svg?style=flat-square
 [npm-version-url]: https://www.npmjs.com/package/gitalk-react
-[gzip-size]: https://img.badgesize.io/https://unpkg.com/gitalk-react/dist/gitalk.browser.js?compression=gzip&style=flat-square
+[gzip-size]: https://img.badgesize.io/https://unpkg.com/gitalk-react@latest/dist/gitalk.browser.js?compression=gzip&style=flat-square
 [gzip-url]: https://unpkg.com/gitalk-react/dist/gitalk.browser.js

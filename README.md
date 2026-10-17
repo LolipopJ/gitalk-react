@@ -1,4 +1,9 @@
-Modern comment component based on GitHub Issue and React.
+> [!IMPORTANT]
+> This project was originally initiated as a personal refactor after the upstream Gitalk [ceased maintenance](https://github.com/gitalk/gitalk/tree/ca06b9ff87e2bbc5553b86cd3bc5dcff9b0e8152), aiming to modernize the development workflow with a contemporary frontend framework while fixing existing issues and adding custom features. As of October 16, 2026, the upstream project has been taken over by new maintainers and released a major v2.0 update. The new version similarly modernizes the codebase, adopts GitHub Discussions as its comment backend, and introduces numerous valuable enhancements. Therefore, you should now always prefer the upstream [Gitalk](https://github.com/gitalk/gitalk) as your comment component.
+>
+> That said, I will continue to maintain this project for my own use—selectively merging upstream improvements and adding personal features to suit my specific needs. Thank you for visiting!
+
+Modern comment component based on GitHub Issues and React.
 
 ENGLISH | [简体中文](./README-zh-CN.md)
 
@@ -7,7 +12,7 @@ ENGLISH | [简体中文](./README-zh-CN.md)
 [![NPM][npm-version-image]][npm-version-url]
 [![gzip-size][gzip-size]][gzip-url]
 
-Reimplementing [Gitalk](https://github.com/gitalk/gitalk) with TypeScript, React, and Vite — a comment component based on GitHub issues.
+Reimplementing [Gitalk 1.x](https://github.com/gitalk/gitalk/tree/v1) with TypeScript, React, and Vite — a comment component based on GitHub issues.
 
 Developed for modern browsers, focusing on reducing build size and enhancing development and usage experience.
 
@@ -381,19 +386,11 @@ Bundle and build components:
 pnpm run build
 ```
 
-## Features under Development
-
-- [ ] Feature: Support editing comments published by the user in Gitalk React.
-- [x] Feature: Support collapse overly long comments, allowing users to click to expand the comment.
-- [x] refactor: Gradually remove dependencies on non-essential third-party libraries to reduce build size.
-- [x] test: Add automated testing processes to enhance project robustness.
-- [x] chore: Deploy [preview environment](https://lolipopj.github.io/gitalk-react/).
-
 ## License
 
 [MIT](./LICENSE)
 
 [npm-version-image]: https://img.shields.io/npm/v/gitalk-react.svg?style=flat-square
 [npm-version-url]: https://www.npmjs.com/package/gitalk-react
-[gzip-size]: https://img.badgesize.io/https://unpkg.com/gitalk-react/dist/gitalk.browser.js?compression=gzip&style=flat-square
+[gzip-size]: https://img.badgesize.io/https://unpkg.com/gitalk-react@latest/dist/gitalk.browser.js?compression=gzip&style=flat-square
 [gzip-url]: https://unpkg.com/gitalk-react/dist/gitalk.browser.js
