@@ -26,6 +26,7 @@ import type {
   Comment as CommentType,
   GitalkProps,
   Issue as IssueType,
+  PendingComment,
 } from "./interfaces";
 import {
   getCommentReactionMutationQL,
@@ -40,6 +41,12 @@ import {
 } from "./services/user";
 import { supportsCSSVariables, supportsES2020 } from "./utils/compatibility";
 import logger from "./utils/logger";
+import {
+  type ReactionContent,
+  type ReactionGroup,
+  reactionsFromGroups,
+  reactionsFromRest,
+} from "./utils/reactions";
 
 const isModernBrowser = supportsCSSVariables() && supportsES2020();
 
@@ -114,6 +121,9 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   const [inputComment, setInputComment] = useState<string>("");
   const draftVersionRef = useRef(0);
   const submissionRef = useRef<object | null>(null);
+  const reactionRequestRef = useRef<object | null>(null);
+  const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
+  const pendingIdRef = useRef(0);
   const updateInputComment = useCallback(
     (value: React.SetStateAction<string>) => {
       draftVersionRef.current += 1;
@@ -186,13 +196,16 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     cancelGetIssue();
     cancelGetComments();
     cancelCreateIssueComment();
-    cancelLikeOrDislikeComment();
+    cancelReactToComment();
+    reactionRequestRef.current = null;
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     setAccessToken(undefined);
     clearAccessTokenResult(undefined);
     setUser(undefined);
     setComments([]);
     setLocalComments([]);
+    setPendingComments([]);
+    submissionRef.current = null;
     commentCreationVersionRef.current = 0;
     setCommentsCursor("");
     setCommentsPage(undefined);
@@ -439,10 +452,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
                 body_html: comment.bodyHTML,
                 created_at: comment.createdAt,
                 html_url: comment.resourcePath,
-                reactions: {
-                  heart: comment.reactions?.totalCount ?? 0,
-                },
-                reactionsHeart: comment.reactions,
+                reactions: reactionsFromGroups(comment.reactionGroups),
               } as CommentType;
             });
           logger.s(
@@ -521,15 +531,10 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         }
 
         const _comments = getIssueCommentsRes.data.map((comment) => {
-          const reactionsHeartTotalCount = comment.reactions?.heart ?? 0;
           return {
             ...comment,
             user: comment.user ?? { ...defaultUser },
-            reactions: { heart: reactionsHeartTotalCount },
-            reactionsHeart: {
-              totalCount: reactionsHeartTotalCount,
-              viewerHasReacted: false,
-            },
+            reactions: reactionsFromRest(comment.reactions),
           } as CommentType;
         });
         logger.s(`Get comments from ${from} to ${to} successfully:`, _comments);
@@ -606,11 +611,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
         const createdIssueComment = {
           ...createIssueCommentRes.data,
           user: createIssueCommentRes.data.user ?? { ...defaultUser },
-          reactions: { heart: 0 },
-          reactionsHeart: {
-            totalCount: 0,
-            viewerHasReacted: false,
-          },
+          reactions: reactionsFromRest(createIssueCommentRes.data.reactions),
         } as CommentType;
         logger.s(`Create issue comment successfully.`);
 
@@ -641,31 +642,68 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     },
   );
 
-  const submitComment = async () => {
+  const submitComment = async (retry?: PendingComment) => {
+    const body = retry?.body ?? inputComment;
     if (
       !user ||
       !issue ||
       !owner ||
       !repo ||
-      !inputComment.trim() ||
+      !body.trim() ||
       getIssueLoading ||
       createIssueCommentLoading ||
       submissionRef.current
     )
       return;
     const submission = {};
-    const draftVersion = draftVersionRef.current;
+    const draftVersion = retry?.draftVersion ?? draftVersionRef.current;
+    const pending = retry ??
+      pendingComments.find(
+        (comment) =>
+          comment.status === "failed" &&
+          comment.draftVersion === draftVersion &&
+          comment.body === body,
+      ) ?? {
+        id: ++pendingIdRef.current,
+        body,
+        user,
+        draftVersion,
+        status: "sending" as const,
+      };
     submissionRef.current = submission;
+    setAlert("");
+    setPendingComments((previous) => [
+      ...previous.filter((comment) => comment.id !== pending.id),
+      { ...pending, status: "sending", error: undefined },
+    ]);
     try {
-      await runCreateIssueComment(inputComment);
+      await runCreateIssueComment(body);
+      if (submissionRef.current !== submission) return;
+      // The POST response is the committed comment. Later reads or callbacks
+      // must never turn a successful write into a retryable submission.
+      setPendingComments((previous) =>
+        previous.filter((comment) => comment.id !== pending.id),
+      );
       if (
         submissionRef.current === submission &&
         draftVersionRef.current === draftVersion
       ) {
         setInputComment("");
       }
-    } catch {
-      // useRequest reports active request failures through onError.
+    } catch (error) {
+      if (submissionRef.current === submission) {
+        setPendingComments((previous) =>
+          previous.map((comment) =>
+            comment.id === pending.id
+              ? {
+                  ...comment,
+                  status: "failed",
+                  error: error instanceof Error ? error.message : String(error),
+                }
+              : comment,
+          ),
+        );
+      }
     } finally {
       if (submissionRef.current === submission) submissionRef.current = null;
     }
@@ -676,6 +714,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     setIssue(undefined);
     setComments([]);
     setLocalComments([]);
+    setPendingComments([]);
     setCommentsCount(0);
     setCommentsCursor("");
     setCommentsPage(undefined);
@@ -754,26 +793,31 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   }, [commentsCount, updateCountCallback]);
 
   const {
-    loading: likeOrDislikeCommentLoading,
-    run: runLikeOrDislikeComment,
-    cancel: cancelLikeOrDislikeComment,
+    loading: reactionLoading,
+    runAsync: runReactToComment,
+    cancel: cancelReactToComment,
   } = useRequest(
-    async (like: boolean, commentId: CommentType["id"]) => {
+    async (
+      add: boolean,
+      content: ReactionContent,
+      commentId: CommentType["id"],
+    ) => {
       const targetComment = comments
         .concat(localComments)
         .find((comment) => comment.id === commentId);
       if (!targetComment) throw new Error("Comment is no longer available.");
       const result = await octokit.graphql<{
         reaction: {
-          subject: { reactions: CommentType["reactionsHeart"] } | null;
+          subject: { reactionGroups: ReactionGroup[] } | null;
         } | null;
-      }>(getCommentReactionMutationQL(like), {
+      }>(getCommentReactionMutationQL(add), {
         subjectId: targetComment.node_id,
+        content,
       });
-      const reactions = result.reaction?.subject?.reactions;
+      const reactions = result.reaction?.subject?.reactionGroups;
       if (!reactions)
         throw new Error("The comment reaction could not be updated.");
-      return { commentId, reactions };
+      return { commentId, reactions: reactionsFromGroups(reactions) };
     },
     {
       manual: true,
@@ -783,8 +827,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
           comment.id === commentId
             ? {
                 ...comment,
-                reactions: { heart: reactions.totalCount },
-                reactionsHeart: reactions,
+                reactions,
               }
             : comment;
         setComments((previous) => previous.map(updateComment));
@@ -796,9 +839,29 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       },
     },
   );
+  const reactToComment = async (
+    add: boolean,
+    content: ReactionContent,
+    commentId: CommentType["id"],
+  ) => {
+    if (!user || reactionRequestRef.current) return;
+    const request = {};
+    reactionRequestRef.current = request;
+    try {
+      await runReactToComment(add, content, commentId);
+    } catch {
+      // Active mutation errors are reported by useRequest.onError.
+    } finally {
+      if (reactionRequestRef.current === request)
+        reactionRequestRef.current = null;
+    }
+  };
   useLayoutEffect(
-    () => () => cancelLikeOrDislikeComment(),
-    [issueScope, accessToken, cancelLikeOrDislikeComment],
+    () => () => {
+      cancelReactToComment();
+      reactionRequestRef.current = null;
+    },
+    [issueScope, accessToken, cancelReactToComment],
   );
   const initialized = useMemo(
     () =>
@@ -960,7 +1023,9 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
                 octokit={octokit}
                 user={user}
                 onLogin={onLogin}
-                onCreateComment={submitComment}
+                onCreateComment={() => submitComment()}
+                comments={loadedComments}
+                onValueChange={updateInputComment}
                 createCommentLoading={createIssueCommentLoading}
                 onPreviewError={(e) => {
                   setAlert(`Preview rendered comment failed: ${e}`);
@@ -978,8 +1043,11 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
                 user={user}
                 admin={admin}
                 onReply={onReplyComment}
-                onLike={runLikeOrDislikeComment}
-                likeLoading={likeOrDislikeCommentLoading}
+                onReaction={reactToComment}
+                reactionLoading={reactionLoading}
+                pendingComments={pendingComments}
+                onRetry={submitComment}
+                createCommentLoading={createIssueCommentLoading}
                 collapsedHeight={collapsedHeight}
                 highlightAdminComment={highlightAdminComment}
               />

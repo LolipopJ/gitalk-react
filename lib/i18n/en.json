@@ -1,4 +1,7 @@
 {
+  "sending": "Sending…",
+  "send-failed": "Comment could not be sent",
+  "retry": "Retry",
   "init": "Gitalking ...",
   "no-found-related": "Related %{link} not found",
   "please-contact": "Please contact %{user} to initialize the comment",

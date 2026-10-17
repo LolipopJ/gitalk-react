@@ -1,7 +1,13 @@
 import React, { useContext } from "react";
 
 import I18nContext from "../contexts/I18nContext";
-import type { Comment as CommentType, GitalkProps, User } from "../interfaces";
+import type {
+  Comment as CommentType,
+  GitalkProps,
+  PendingComment,
+  User,
+} from "../interfaces";
+import type { ReactionContent } from "../utils/reactions";
 import AnimatedComments from "./animated-comments";
 import Button from "./button";
 import Comment, { type CommentProps } from "./comment";
@@ -12,12 +18,16 @@ interface CommentItemProps
       CommentProps,
       | "comment"
       | "onReply"
-      | "likeLoading"
+      | "reactionLoading"
       | "collapsedHeight"
       | "highlightAdminComment"
     >,
     Pick<GitalkProps, "admin"> {
-  onLike: (like: boolean, commentId: CommentType["id"]) => void;
+  onReaction: (
+    add: boolean,
+    content: ReactionContent,
+    commentId: CommentType["id"],
+  ) => void;
   user?: User;
 }
 
@@ -25,7 +35,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
   comment,
   user,
   admin,
-  onLike,
+  onReaction,
   ...restProps
 }) => {
   const { id: commentId, user: commentAuthor } = comment;
@@ -45,8 +55,8 @@ const CommentItem: React.FC<CommentItemProps> = ({
       comment={comment}
       isAuthor={isAuthor}
       isAdmin={isAdmin}
-      onLike={(like) => {
-        onLike(like, commentId);
+      onReaction={(add, content) => {
+        onReaction(add, content, commentId);
       }}
     />
   );
@@ -58,6 +68,9 @@ interface CommentsListProps extends Omit<CommentItemProps, "comment"> {
   hasMoreComments: boolean;
   onGetComments: () => void;
   getCommentsLoading: boolean;
+  pendingComments: PendingComment[];
+  onRetry: (comment: PendingComment) => void;
+  createCommentLoading: boolean;
 }
 
 const CommentsList: React.FC<CommentsListProps> = (props) => {
@@ -67,6 +80,9 @@ const CommentsList: React.FC<CommentsListProps> = (props) => {
     hasMoreComments,
     onGetComments,
     getCommentsLoading,
+    pendingComments = [],
+    onRetry,
+    createCommentLoading,
     ...restCommentProps
   } = props;
 
@@ -74,6 +90,37 @@ const CommentsList: React.FC<CommentsListProps> = (props) => {
 
   return (
     <div className="gt-comments" key="comments">
+      <div
+        className="gt-pending-comments"
+        aria-live="polite"
+        aria-relevant="additions text"
+      >
+        {pendingComments.map((comment) => (
+          <div
+            className="gt-comment gt-comment-pending"
+            key={comment.id}
+            aria-busy={comment.status === "sending"}
+          >
+            <div className="gt-comment-content">
+              <div className="gt-comment-header">{comment.user.login}</div>
+              <div className="gt-pending-body">{comment.body}</div>
+              <p role="status">
+                {comment.status === "sending"
+                  ? polyglot.t("sending")
+                  : `${polyglot.t("send-failed")}: ${comment.error}`}
+              </p>
+              {comment.status === "failed" && (
+                <Button
+                  className="gt-btn-retry"
+                  text={polyglot.t("retry")}
+                  disabled={createCommentLoading}
+                  onClick={() => onRetry(comment)}
+                />
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
       <AnimatedComments>
         {comments.map((comment) => (
           <CommentItem
@@ -83,7 +130,7 @@ const CommentsList: React.FC<CommentsListProps> = (props) => {
           />
         ))}
       </AnimatedComments>
-      {!commentsCount && (
+      {!commentsCount && !pendingComments.length && (
         <p className="gt-comments-null">{polyglot.t("first-comment-person")}</p>
       )}
       {hasMoreComments ? (

@@ -7,6 +7,8 @@ import vm from "node:vm";
 import { Octokit } from "octokit";
 import ts from "typescript";
 
+import { loadSource } from "./helpers/source.mjs";
+
 const oauthScope = {
   owner: "owner",
   repo: "repo",
@@ -43,6 +45,7 @@ const loadUserService = (fetch, browser = {}) => {
     history: { replaceState: (_state, _title, url) => (location.href = url) },
     ...browser,
     require: (path) => {
+      if (path === "./utils/reactions") return loadSource("utils/reactions.ts");
       if (path === "../constants") {
         return {
           DEFAULT_PROXY:
@@ -1008,6 +1011,7 @@ test("Octokit reports authenticated 401s to the session owner and rethrows error
   const getOctokitInstance = loadRequestService(
     class {
       hook = {
+        before() {},
         error: (_event, fn) => {
           onError = fn;
         },
@@ -1047,6 +1051,78 @@ test("real Octokit REST and GraphQL 401s both invalidate the session", async (t)
   });
   assert.equal(cleared, 2);
 });
+
+test("REST and GraphQL requests always send the new global node ID header", async (t) => {
+  const headers = [];
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    headers.push(new Headers(options.headers));
+    return new Response(
+      JSON.stringify(
+        String(url).endsWith("/graphql")
+          ? { data: { viewer: { login: "user" } } }
+          : { login: "user" },
+      ),
+      {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      },
+    );
+  });
+  for (const token of [undefined, "token"]) {
+    const octokit = loadRequestService(Octokit)(token, () => {});
+    await octokit.request("GET /user");
+    if (token) await octokit.graphql("query { viewer { login } }");
+  }
+  assert.equal(headers.length, 3);
+  for (const header of headers)
+    assert.equal(header.get("x-github-next-global-id"), "1");
+});
+
+for (const [status, headers, message, limited] of [
+  [429, {}, "Too many requests", true],
+  [
+    403,
+    { "x-ratelimit-remaining": "0", "x-ratelimit-reset": "1800000000" },
+    "Forbidden",
+    true,
+  ],
+  [403, { "retry-after": "30" }, "Forbidden", true],
+  [403, {}, "You have exceeded a secondary rate limit", true],
+  [
+    403,
+    { "x-ratelimit-remaining": "50" },
+    "Resource not accessible by integration",
+    false,
+  ],
+]) {
+  test(`request errors distinguish rate limits: ${status} ${JSON.stringify(headers)}`, () => {
+    let onError;
+    let cleared = 0;
+    const octokit = loadRequestService(
+      class {
+        hook = {
+          error: (_event, fn) => {
+            onError = fn;
+          },
+          before() {},
+        };
+      },
+    );
+    octokit("token", () => cleared++);
+    const error = { status, response: { headers }, message };
+    assert.throws(
+      () => onError(error),
+      (value) => value === error,
+    );
+    assert.equal(cleared, 0);
+    assert.equal(error.status, status);
+    if (limited) assert.match(error.message, /GitHub API rate limit exceeded/);
+    else assert.equal(error.message, message);
+    if (headers["retry-after"]) assert.match(error.message, /30 seconds/);
+    if (headers["x-ratelimit-reset"])
+      assert.match(error.message, /2027-01-15T08:00:00.000Z/);
+  });
+}
 
 for (const auth of [
   { proxy: "https://proxy.example/token" },

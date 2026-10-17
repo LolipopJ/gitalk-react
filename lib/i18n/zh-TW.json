@@ -1,4 +1,7 @@
 {
+  "sending": "傳送中…",
+  "send-failed": "留言傳送失敗",
+  "retry": "重試",
   "init": "Gitalk 載入中…",
   "no-found-related": "未找到相關的 %{link}",
   "please-contact": "請聯絡 %{user} 初始化評論",

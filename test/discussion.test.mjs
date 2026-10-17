@@ -7,6 +7,8 @@ import vm from "node:vm";
 
 import ts from "typescript";
 
+import { loadSource } from "./helpers/source.mjs";
+
 // Run the component and the installed ahooks implementation with controlled
 // effects and network responses, without a browser or another test dependency.
 const mountGitalk = ({ authenticated = false, ...initialProps } = {}) => {
@@ -160,6 +162,7 @@ const mountGitalk = ({ authenticated = false, ...initialProps } = {}) => {
   });
   context.exports = {};
   context.require = (name) => {
+    if (name === "./utils/reactions") return loadSource("utils/reactions.ts");
     if (name === "react") return { __esModule: true, ...react, default: react };
     if (name === "ahooks") return { useRequest, useMemoizedFn };
     if (name === "classnames") return { __esModule: true, default: () => "gt" };
@@ -274,6 +277,73 @@ const issueRoute = "GET /repos/{owner}/{repo}/issues/{issue_number}";
 const commentsRoute =
   "GET /repos/{owner}/{repo}/issues/{issue_number}/comments";
 const submitRoute = "POST /repos/{owner}/{repo}/issues/{issue_number}/comments";
+
+test("failed POST rows retry their captured body and preserve a newer draft", async () => {
+  const app = await openArticle({ authenticated: true });
+  app.type("Original comment");
+  const first = app.component("comment-textarea").onCreateComment();
+  await app.settle();
+  assert.equal(
+    app.component("comments-list").pendingComments[0].status,
+    "sending",
+  );
+  app.calls
+    .find((call) => call.route === submitRoute)
+    .reject(new Error("POST failed"));
+  await first;
+  await app.settle();
+  const pending = app.component("comments-list").pendingComments[0];
+  assert.equal(pending.status, "failed");
+  app.type("New draft");
+  const retry = app.component("comments-list").onRetry(pending);
+  const post = app.calls.filter((call) => call.route === submitRoute).at(-1);
+  assert.equal(post.params.body, "Original comment");
+  post.resolve({
+    status: 201,
+    data: { id: 12, node_id: "IC_new", body: post.params.body },
+  });
+  await retry;
+  await app.settle();
+  assert.equal(app.component("comments-list").pendingComments.length, 0);
+  assert.equal(app.component("comment-textarea").value, "New draft");
+  assert.equal(
+    app.component("comments-list").comments.filter((c) => c.id === 12).length,
+    1,
+  );
+  app.unmount();
+});
+
+test("a read failing after successful POST never makes the committed comment retryable", async () => {
+  const app = await openArticle({ authenticated: true });
+  app.type("Committed");
+  const submission = app.component("comment-textarea").onCreateComment();
+  app.calls
+    .find((call) => call.route === submitRoute)
+    .resolve({
+      status: 201,
+      data: { id: 13, node_id: "IC_new", body: "Committed" },
+    });
+  await submission;
+  await app.settle();
+  app.component("comments-list").onGetComments();
+  app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1)
+    .reject(new Error("Refresh failed"));
+  await app.settle();
+  assert.equal(app.component("comments-list").pendingComments.length, 0);
+  assert.equal(app.component("comment-textarea").value, "");
+  await app.component("comment-textarea").onCreateComment();
+  assert.equal(
+    app.calls.filter((call) => call.route === submitRoute).length,
+    1,
+  );
+  assert.equal(
+    app.component("comments-list").comments.filter((c) => c.id === 13).length,
+    1,
+  );
+  app.unmount();
+});
 const issueResponse = (number) => ({
   status: 200,
   data: { number, comments: 3 },
@@ -347,7 +417,13 @@ const commentPage = ({
             id: "IC_comment",
             databaseId: 9007199254740993n,
             author,
-            reactions: { totalCount: hearts, viewerHasReacted: reacted },
+            reactionGroups: [
+              {
+                content: "HEART",
+                reactors: { totalCount: hearts },
+                viewerHasReacted: reacted,
+              },
+            ],
           },
         ],
         pageInfo: {
@@ -372,6 +448,65 @@ test("a deleted GraphQL author uses the configured user without losing the page"
   assert.deepEqual({ ...list.comments[0].user }, defaultUser);
   app.unmount();
 });
+
+for (const { content } of loadSource("utils/reactions.ts").REACTIONS) {
+  test(`${content} can be added and removed without losing other reaction states`, async () => {
+    const app = await openArticle({ authenticated: true });
+    const page = commentPage();
+    const groups = loadSource("utils/reactions.ts").REACTIONS.map((r) => ({
+      content: r.content,
+      viewerHasReacted: false,
+      reactors: { totalCount: 150 },
+    }));
+    page.repository.issue.comments.nodes[0].reactionGroups = groups;
+    app.calls.find((call) => call.route === "graphql").resolve(page);
+    await app.settle();
+    assert.equal(
+      app.calls.filter((call) => call.route === "graphql").length,
+      1,
+    );
+    for (const add of [true, false]) {
+      const pending = app
+        .component("comments-list")
+        .onReaction(add, content, 9007199254740993n);
+      // Repeated actions before the disabled state rerenders send no second mutation.
+      void app
+        .component("comments-list")
+        .onReaction(add, content, 9007199254740993n);
+      const mutations = app.calls.filter(
+        (call) => call.route === "graphql" && call.query.includes("mutation"),
+      );
+      assert.equal(mutations.length, add ? 1 : 2);
+      const mutation = mutations.at(-1);
+      assert.equal(mutation.params.content, content);
+      mutation.resolve({
+        reaction: {
+          subject: {
+            reactionGroups: groups.map((group) =>
+              group.content === content
+                ? {
+                    ...group,
+                    viewerHasReacted: add,
+                    reactors: { totalCount: add ? 151 : 150 },
+                  }
+                : group,
+            ),
+          },
+        },
+      });
+      await pending;
+      await app.settle();
+      const states = app.component("comments-list").comments[0].reactions;
+      assert.equal(states[content].viewerHasReacted, add);
+      for (const group of groups)
+        assert.equal(
+          states[group.content].totalCount,
+          group.content === content && add ? 151 : 150,
+        );
+    }
+    app.unmount();
+  });
+}
 
 test("a deleted REST author uses the configured user inside the user field", async () => {
   const defaultUser = { login: "deleted", avatar_url: "avatar", html_url: "" };
@@ -693,7 +828,7 @@ for (const [like, hearts] of [
       .find((call) => call.route === "graphql")
       .resolve(commentPage({ reacted: !like, hearts }));
     await app.settle();
-    app.component("comments-list").onLike(like, 9007199254740993n);
+    app.component("comments-list").onReaction(like, "HEART", 9007199254740993n);
     const mutation = app.calls
       .filter((call) => call.route === "graphql")
       .at(-1);
@@ -704,14 +839,22 @@ for (const [like, hearts] of [
     );
     mutation.resolve({
       reaction: {
-        subject: { reactions: { totalCount: hearts, viewerHasReacted: like } },
+        subject: {
+          reactionGroups: [
+            {
+              content: "HEART",
+              reactors: { totalCount: hearts },
+              viewerHasReacted: like,
+            },
+          ],
+        },
       },
     });
     await app.settle();
     const comment = app.component("comments-list").comments[0];
-    assert.equal(comment.reactions.heart, hearts);
-    assert.equal(comment.reactionsHeart.viewerHasReacted, like);
-    assert.equal(app.component("comments-list").likeLoading, false);
+    assert.equal(comment.reactions.HEART.totalCount, hearts);
+    assert.equal(comment.reactions.HEART.viewerHasReacted, like);
+    assert.equal(app.component("comments-list").reactionLoading, false);
     app.unmount();
   });
 }
@@ -723,7 +866,7 @@ for (const pagerDirection of ["first", "last"]) {
       .find((call) => call.route === "graphql")
       .resolve(commentPage({ hasMore: true }));
     await app.settle();
-    app.component("comments-list").onLike(true, 9007199254740993n);
+    app.component("comments-list").onReaction(true, "HEART", 9007199254740993n);
     const mutation = app.calls
       .filter((call) => call.route === "graphql")
       .at(-1);
@@ -733,11 +876,22 @@ for (const pagerDirection of ["first", "last"]) {
       .at(-1);
     mutation.resolve({
       reaction: {
-        subject: { reactions: { totalCount: 1, viewerHasReacted: true } },
+        subject: {
+          reactionGroups: [
+            {
+              content: "HEART",
+              reactors: { totalCount: 1 },
+              viewerHasReacted: true,
+            },
+          ],
+        },
       },
     });
     await app.settle();
-    assert.equal(app.component("comments-list").comments[0].reactions.heart, 1);
+    assert.equal(
+      app.component("comments-list").comments[0].reactions.HEART.totalCount,
+      1,
+    );
     const nextPage = commentPage({ count: 2 });
     nextPage.repository.issue.comments.nodes[0].id = "IC_second";
     nextPage.repository.issue.comments.nodes[0].databaseId = 9007199254740994n;
@@ -748,8 +902,8 @@ for (const pagerDirection of ["first", "last"]) {
       Array.from(list.comments, (comment) => comment.id),
       [9007199254740993n, 9007199254740994n],
     );
-    assert.equal(list.comments[0].reactions.heart, 1);
-    assert.equal(list.comments[0].reactionsHeart.viewerHasReacted, true);
+    assert.equal(list.comments[0].reactions.HEART.totalCount, 1);
+    assert.equal(list.comments[0].reactions.HEART.viewerHasReacted, true);
     app.unmount();
   });
 }
@@ -839,25 +993,39 @@ test("failed reactions preserve the count and release loading for a retry", asyn
     .find((call) => call.route === "graphql")
     .resolve(commentPage({ hearts: 150, reacted: true }));
   await app.settle();
-  app.component("comments-list").onLike(false, 9007199254740993n);
+  app.component("comments-list").onReaction(false, "HEART", 9007199254740993n);
   app.calls
     .filter((call) => call.route === "graphql")
     .at(-1)
     .reject(new Error("offline"));
   await app.settle();
-  assert.equal(app.component("comments-list").comments[0].reactions.heart, 150);
-  assert.equal(app.component("comments-list").likeLoading, false);
-  app.component("comments-list").onLike(false, 9007199254740993n);
+  assert.equal(
+    app.component("comments-list").comments[0].reactions.HEART.totalCount,
+    150,
+  );
+  assert.equal(app.component("comments-list").reactionLoading, false);
+  app.component("comments-list").onReaction(false, "HEART", 9007199254740993n);
   app.calls
     .filter((call) => call.route === "graphql")
     .at(-1)
     .resolve({
       reaction: {
-        subject: { reactions: { totalCount: 149, viewerHasReacted: false } },
+        subject: {
+          reactionGroups: [
+            {
+              content: "HEART",
+              reactors: { totalCount: 149 },
+              viewerHasReacted: false,
+            },
+          ],
+        },
       },
     });
   await app.settle();
-  assert.equal(app.component("comments-list").comments[0].reactions.heart, 149);
+  assert.equal(
+    app.component("comments-list").comments[0].reactions.HEART.totalCount,
+    149,
+  );
   app.unmount();
 });
 
@@ -865,7 +1033,7 @@ test("switching articles cancels an old pending reaction", async () => {
   const app = await openArticle({ authenticated: true });
   app.calls.find((call) => call.route === "graphql").resolve(commentPage());
   await app.settle();
-  app.component("comments-list").onLike(true, 9007199254740993n);
+  app.component("comments-list").onReaction(true, "HEART", 9007199254740993n);
   const oldReaction = app.calls
     .filter((call) => call.route === "graphql")
     .at(-1);
@@ -883,12 +1051,23 @@ test("switching articles cancels an old pending reaction", async () => {
   await app.settle();
   oldReaction.resolve({
     reaction: {
-      subject: { reactions: { totalCount: 1, viewerHasReacted: true } },
+      subject: {
+        reactionGroups: [
+          {
+            content: "HEART",
+            reactors: { totalCount: 1 },
+            viewerHasReacted: true,
+          },
+        ],
+      },
     },
   });
   await app.settle();
-  assert.equal(app.component("comments-list").comments[0].reactions.heart, 7);
-  assert.equal(app.component("comments-list").likeLoading, false);
+  assert.equal(
+    app.component("comments-list").comments[0].reactions.HEART.totalCount,
+    7,
+  );
+  assert.equal(app.component("comments-list").reactionLoading, false);
   app.unmount();
 });
 
@@ -1022,7 +1201,9 @@ const graphqlPage = (id, cursor) => ({
   repository: {
     issue: {
       comments: {
-        nodes: [{ databaseId: id, author: { login: "author" } }],
+        nodes: [
+          { databaseId: id, author: { login: "author" }, reactionGroups: [] },
+        ],
         pageInfo: { startCursor: cursor },
       },
     },

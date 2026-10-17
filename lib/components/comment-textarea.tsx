@@ -1,11 +1,23 @@
 import { useRequest } from "ahooks";
 import type { Octokit } from "octokit";
-import React, { forwardRef, useContext, useRef, useState } from "react";
+import React, {
+  forwardRef,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import Github from "../assets/github.svg?raw";
 import Tip from "../assets/tip.svg?raw";
 import I18nContext from "../contexts/I18nContext";
-import type { User } from "../interfaces";
+import type { Comment, User } from "../interfaces";
+import {
+  findMention,
+  type Mention,
+  mentionCandidates,
+  replaceMention,
+} from "../utils/mentions";
 import Avatar from "./avatar";
 import Button from "./button";
 import Svg from "./svg";
@@ -21,7 +33,11 @@ interface CommentTextareaProps extends React.DetailedHTMLProps<
   onCreateComment: (comment: string) => Promise<void>;
   createCommentLoading: boolean;
   onPreviewError: (error: unknown) => void;
+  comments: Comment[];
+  onValueChange: (value: string) => void;
 }
+
+let nextMentionId = 0;
 
 const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
   (props, ref) => {
@@ -33,12 +49,72 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
       onCreateComment,
       createCommentLoading,
       onPreviewError,
+      comments = [],
+      onValueChange,
+      onChange,
+      onKeyDown,
+      onSelect,
+      onBlur,
+      onCompositionStart,
+      onCompositionEnd,
       ...restProps
     } = props;
 
     const { polyglot } = useContext(I18nContext);
 
     const [isPreviewComment, setIsPreviewComment] = useState<boolean>(false);
+    const [listId] = useState(() => `gt-mentions-${++nextMentionId}`);
+    const inputRef = useRef<HTMLTextAreaElement | null>(null);
+    const composingRef = useRef(false);
+    const caretRef = useRef<number | null>(null);
+    const completedMentionRef = useRef<{ value: string; caret: number } | null>(
+      null,
+    );
+    const [mention, setMention] = useState<
+      (Mention & { value: string }) | null
+    >(null);
+    const [activeIndex, setActiveIndex] = useState(0);
+    const candidates =
+      mention && mention.value === inputComment && !isPreviewComment
+        ? mentionCandidates(comments, mention.query)
+        : [];
+    const selectedIndex = Math.min(
+      activeIndex,
+      Math.max(0, candidates.length - 1),
+    );
+    const updateMention = (textarea: HTMLTextAreaElement) => {
+      const completed = completedMentionRef.current;
+      const next =
+        composingRef.current ||
+        (completed?.value === textarea.value &&
+          completed.caret === textarea.selectionStart)
+          ? null
+          : findMention(
+              textarea.value,
+              textarea.selectionStart,
+              textarea.selectionEnd,
+            );
+      setMention(next ? { ...next, value: textarea.value } : null);
+      setActiveIndex(0);
+    };
+    const chooseMention = (login: string) => {
+      if (!mention) return;
+      const result = replaceMention(inputComment, mention, login);
+      completedMentionRef.current = {
+        value: result.value,
+        caret: result.caret,
+      };
+      caretRef.current = result.caret;
+      onValueChange(result.value);
+      setMention(null);
+    };
+    useLayoutEffect(() => {
+      if (caretRef.current !== null) {
+        inputRef.current?.focus();
+        inputRef.current?.setSelectionRange(caretRef.current, caretRef.current);
+        caretRef.current = null;
+      }
+    }, [inputComment, mention]);
 
     const prevInputCommentRef = useRef<string>();
     const prevCommentHtmlRef = useRef<string>("");
@@ -71,6 +147,7 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
     const onCommentInputPreview: React.MouseEventHandler<
       HTMLButtonElement
     > = () => {
+      setMention(null);
       if (isPreviewComment) {
         setIsPreviewComment(false);
       } else {
@@ -102,11 +179,102 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
           <textarea
             aria-label={polyglot.t("comment")}
             {...restProps}
-            ref={ref}
+            ref={(element) => {
+              inputRef.current = element;
+              if (typeof ref === "function") ref(element);
+              else if (ref) ref.current = element;
+            }}
             value={inputComment}
+            aria-autocomplete="list"
+            aria-haspopup="listbox"
+            aria-controls={candidates.length ? listId : undefined}
+            aria-activedescendant={
+              candidates.length ? `${listId}-${selectedIndex}` : undefined
+            }
+            onChange={(event) => {
+              completedMentionRef.current = null;
+              onChange?.(event);
+              updateMention(event.currentTarget);
+            }}
+            onSelect={(event) => {
+              onSelect?.(event);
+              updateMention(event.currentTarget);
+            }}
+            onBlur={(event) => {
+              onBlur?.(event);
+              setMention(null);
+            }}
+            onCompositionStart={(event) => {
+              composingRef.current = true;
+              setMention(null);
+              onCompositionStart?.(event);
+            }}
+            onCompositionEnd={(event) => {
+              composingRef.current = false;
+              updateMention(event.currentTarget);
+              onCompositionEnd?.(event);
+            }}
+            onKeyDown={(event) => {
+              if (
+                composingRef.current ||
+                event.nativeEvent.isComposing ||
+                event.keyCode === 229
+              )
+                return;
+              if (
+                candidates.length &&
+                !event.ctrlKey &&
+                !event.metaKey &&
+                !event.shiftKey &&
+                !event.altKey
+              ) {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setActiveIndex(
+                    (selectedIndex +
+                      (event.key === "ArrowDown" ? 1 : -1) +
+                      candidates.length) %
+                      candidates.length,
+                  );
+                  return;
+                }
+                if (event.key === "Enter" || event.key === "Tab") {
+                  event.preventDefault();
+                  chooseMention(candidates[selectedIndex]!);
+                  return;
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setMention(null);
+                  return;
+                }
+              }
+              onKeyDown?.(event);
+            }}
             className="gt-header-textarea"
             style={{ display: isPreviewComment ? "none" : undefined }}
           />
+          {candidates.length > 0 && (
+            <ul
+              id={listId}
+              className="gt-mentions"
+              role="listbox"
+              aria-label="Mention suggestions"
+            >
+              {candidates.map((login, index) => (
+                <li
+                  key={login}
+                  id={`${listId}-${index}`}
+                  role="option"
+                  aria-selected={selectedIndex === index}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => chooseMention(login)}
+                >
+                  @{login}
+                </li>
+              ))}
+            </ul>
+          )}
           <div
             className="gt-header-preview markdown-body"
             style={{ display: isPreviewComment ? undefined : "none" }}

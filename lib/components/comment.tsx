@@ -3,20 +3,19 @@ import React, {
   useContext,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 
 import ArrowDown from "../assets/arrow-down.svg?raw";
 import Edit from "../assets/edit.svg?raw";
-import Heart from "../assets/heart.svg?raw";
-import HeartFilled from "../assets/heart-filled.svg?raw";
 import Reply from "../assets/reply.svg?raw";
 import I18nContext from "../contexts/I18nContext";
 import type { Comment as CommentType, GitalkProps } from "../interfaces";
 import { formatRelativeTime } from "../utils/date";
+import type { ReactionContent } from "../utils/reactions";
 import Avatar from "./avatar";
+import Reactions from "./reactions";
 import Svg from "./svg";
 
 export interface CommentProps
@@ -30,8 +29,12 @@ export interface CommentProps
   isAuthor: boolean;
   isAdmin: boolean;
   onReply: (comment: CommentType) => void;
-  onLike: (like: boolean, comment: CommentType) => void;
-  likeLoading: boolean;
+  onReaction: (
+    add: boolean,
+    content: ReactionContent,
+    comment: CommentType,
+  ) => void;
+  reactionLoading: boolean;
 }
 
 const Comment: React.FC<CommentProps> = ({
@@ -39,8 +42,8 @@ const Comment: React.FC<CommentProps> = ({
   isAuthor,
   isAdmin,
   onReply,
-  onLike,
-  likeLoading,
+  onReaction,
+  reactionLoading,
   collapsedHeight,
   highlightAdminComment,
   className = "",
@@ -52,15 +55,10 @@ const Comment: React.FC<CommentProps> = ({
 
   const { polyglot, relativeTimeFormat } = useContext(I18nContext);
 
-  const { body_html, created_at, user, reactionsHeart, html_url } = comment;
+  const { body_html, created_at, user, reactions, html_url } = comment;
   const commentHtmlUrl = html_url.includes("github.com")
     ? html_url
     : `https://github.com/${html_url}`;
-
-  const reactionsHeartCountText = useMemo(() => {
-    const totalCount = reactionsHeart?.totalCount ?? 0;
-    return totalCount > 100 ? "100+" : String(totalCount);
-  }, [reactionsHeart]);
 
   useEffect(() => {
     const commentElement = ref.current;
@@ -142,24 +140,6 @@ const Comment: React.FC<CommentProps> = ({
             </span>
           </div>
           <div className="gt-comment-actions">
-            <button
-              type="button"
-              aria-label="Like"
-              aria-pressed={reactionsHeart?.viewerHasReacted ?? false}
-              disabled={likeLoading}
-              className="gt-comment-like"
-              title="Like"
-              onClick={() => {
-                if (reactionsHeart && !likeLoading)
-                  onLike(!reactionsHeart.viewerHasReacted, comment);
-              }}
-            >
-              <Svg
-                className="gt-ico-heart"
-                icon={reactionsHeart?.viewerHasReacted ? HeartFilled : Heart}
-                text={reactionsHeartCountText}
-              />
-            </button>
             {isAuthor && (
               // TODO: 支持在 Gitalk 里编辑
               <a
@@ -188,6 +168,11 @@ const Comment: React.FC<CommentProps> = ({
           dangerouslySetInnerHTML={{
             __html: body_html ?? "",
           }}
+        />
+        <Reactions
+          reactions={reactions}
+          loading={reactionLoading}
+          onReaction={(add, content) => onReaction(add, content, comment)}
         />
         {collapsed && (
           <button

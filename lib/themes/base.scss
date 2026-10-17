@@ -68,6 +68,131 @@ $gt-mask-z-index: 9999;
 $gt-breakpoint-mobile: 480px;
 
 .gt-container {
+  .gt-comment-reactions {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em;
+    align-items: center;
+    margin-top: 0.75em;
+  }
+
+  .gt-reaction-picker {
+    display: flex;
+  }
+
+  .gt-reaction-add,
+  .gt-reaction-option {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2em;
+    height: 2em;
+    padding: 0.25em;
+    font: inherit;
+    color: var(--gt-color-sub);
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.375em;
+
+    &:hover {
+      color: var(--gt-color-main);
+      background: var(--gt-color-input-bg-lighter);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--gt-color-main);
+      outline-offset: 2px;
+    }
+
+    &:disabled,
+    &[aria-disabled="true"] {
+      cursor: wait;
+      opacity: 0.6;
+    }
+  }
+
+  .gt-reaction-add {
+    border-color: var(--gt-color-input-border);
+    border-radius: 50%;
+  }
+
+  .gt-reaction-menu {
+    position: absolute;
+    bottom: calc(100% + 0.5em);
+    left: 0;
+    z-index: 10;
+    display: flex;
+    gap: 0.2em;
+    width: max-content;
+    max-width: 100%;
+    padding: 0.4em;
+    overflow-x: auto;
+    background: var(--gt-color-popbg);
+    border: 1px solid var(--gt-color-input-border);
+    border-radius: 0.5em;
+    box-shadow: 0 3px 12px rgb(0 0 0 / 15%);
+  }
+
+  .gt-reaction-option[aria-checked="true"] {
+    color: var(--gt-color-main);
+    background: var(--gt-color-comment-bg);
+    border-color: currentcolor;
+  }
+
+  .gt-comment-reaction {
+    padding: 0.1em 0.4em;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid currentcolor;
+    border-radius: 1em;
+
+    &[aria-pressed="true"] {
+      color: var(--gt-color-main);
+      background: var(--gt-color-comment-bg);
+    }
+
+    &:focus-visible {
+      outline: 2px solid currentcolor;
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      cursor: wait;
+      opacity: 0.6;
+    }
+  }
+
+  .gt-mentions {
+    max-height: 12em;
+    padding: 0.25em;
+    margin: 0.25em 0;
+    overflow-y: auto;
+    list-style: none;
+    border: 1px solid currentcolor;
+    border-radius: 0.25em;
+
+    [role="option"] {
+      padding: 0.25em 0.5em;
+      cursor: pointer;
+
+      &[aria-selected="true"] {
+        color: var(--gt-color-main);
+        outline: 1px solid currentcolor;
+        background: var(--gt-color-comment-bg);
+      }
+    }
+  }
+
+  .gt-pending-body {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
   box-sizing: border-box;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   font-size: $gt-size-base;
@@ -543,9 +668,10 @@ $gt-breakpoint-mobile: 480px;
       &-content {
         position: relative;
         flex: 1;
+        min-width: 0;
         padding: em(12px) em(16px);
         margin-left: em(20px);
-        overflow: auto;
+        overflow: visible;
         background-color: var(--gt-color-comment-bg);
         transition: all ease 0.25s;
 
@@ -634,6 +760,7 @@ $gt-breakpoint-mobile: 480px;
       }
 
       &-body {
+        overflow: auto;
         color: var(--gt-color-comment-txt);
         background-color: inherit;
 
@@ -678,7 +805,8 @@ $gt-breakpoint-mobile: 480px;
             box-shadow: 0 em(2px) em(12px) 0 var(--gt-color-comment-shadow);
 
             &:hover {
-              box-shadow: 0 em(2px) em(24px) 0 var(--gt-color-comment-shadow-admin);
+              box-shadow: 0 em(2px) em(24px) 0
+                var(--gt-color-comment-shadow-admin);
             }
           }
         }

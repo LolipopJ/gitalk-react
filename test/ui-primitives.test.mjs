@@ -8,6 +8,8 @@ import React from "react";
 import ReactDOMServer from "react-dom/server.js";
 import ts from "typescript";
 
+import { loadSource } from "./helpers/source.mjs";
+
 const require = createRequire(import.meta.url);
 const { renderToStaticMarkup } = ReactDOMServer;
 const context = {
@@ -61,7 +63,7 @@ function load(path, react = React, globals = {}) {
 function mount(path, props, globals = {}) {
   let cursor;
   let pendingEffects;
-  const hooks = [];
+  let hooks = [];
   const react = {
     ...React,
     useContext: () => context,
@@ -102,7 +104,8 @@ function mount(path, props, globals = {}) {
   react.useLayoutEffect = react.useEffect;
   const Component = load(path, react, globals).default;
   return {
-    render(next = props, attachRefs) {
+    render(next = props, attachRefs, instanceHooks = hooks) {
+      hooks = instanceHooks;
       cursor = 0;
       pendingEffects = [];
       const result =
@@ -171,14 +174,17 @@ test("comment actions and expansion use named buttons and reflect like state", (
     created_at: "2026-10-15T00:00:00Z",
     html_url: "https://github.com/owner/repo/issues/1#issuecomment-1",
     user: { login: "user" },
-    reactionsHeart: { viewerHasReacted: true, totalCount: 1 },
+    reactions: {
+      ...loadSource("utils/reactions.ts").reactionsFromRest(),
+      HEART: { viewerHasReacted: true, totalCount: 1 },
+    },
   };
   let liked;
   let replied;
   const props = {
     comment,
     collapsedHeight: 100,
-    onLike: (...args) => {
+    onReaction: (...args) => {
       liked = args;
     },
     onReply: (value) => {
@@ -190,23 +196,25 @@ test("comment actions and expansion use named buttons and reflect like state", (
     view.ref.current = { clientHeight: 200, querySelector() {} };
   });
   const view = instance.render();
-  for (const name of ["like", "reply", "collapse"]) {
+  for (const name of ["reply", "collapse"]) {
     const button = find(view, `gt-comment-${name}`);
     assert.equal(button.type, "button");
     assert.equal(button.props.type, "button");
     assert.ok(button.props["aria-label"]);
   }
-  const like = find(view, "gt-comment-like");
-  assert.equal(like.props["aria-pressed"], true);
-  like.props.onClick();
-  assert.deepEqual(liked, [false, comment]);
+  const picker = (rendered) =>
+    React.Children.toArray(
+      find(rendered, "gt-comment-content").props.children,
+    ).find((child) => child.type?.name === "Reactions");
+  assert.equal(picker(view).props.reactions.HEART.viewerHasReacted, true);
+  picker(view).props.onReaction(false, "HEART");
+  assert.deepEqual(liked, [false, "HEART", comment]);
   find(view, "gt-comment-reply").props.onClick();
   assert.equal(replied, comment);
   find(view, "gt-comment-collapse").props.onClick();
   assert.equal(find(instance.render(), "gt-comment-collapse"), undefined);
   assert.equal(
-    find(instance.render({ ...props, likeLoading: true }), "gt-comment-like")
-      .props.disabled,
+    picker(instance.render({ ...props, reactionLoading: true })).props.loading,
     true,
   );
 });
@@ -226,6 +234,397 @@ test("the editor has a persistent accessible name and a named login button", () 
     ).props["aria-label"],
     "Custom label",
   );
+});
+
+test("mention list supports caret selection, keyboard navigation, IME and mouse selection", () => {
+  let forwardedKeys = 0;
+  let selected;
+  const props = {
+    value: "before @al after",
+    comments: ["Alice", "Alfred", "alice", "Bob"].map((login) => ({
+      user: { login },
+    })),
+    onValueChange: (value) => {
+      selected = value;
+    },
+    onKeyDown: () => forwardedKeys++,
+  };
+  const editor = mount("components/comment-textarea.tsx", props);
+  const textarea = { value: props.value, selectionStart: 10, selectionEnd: 10 };
+  let view = editor.render();
+  find(view, "gt-header-textarea").props.onSelect({ currentTarget: textarea });
+  view = editor.render();
+  const input = find(view, "gt-header-textarea");
+  const list = find(view, "gt-mentions");
+  const options = React.Children.toArray(list.props.children);
+  assert.equal(list.props.role, "listbox");
+  assert.equal(options.length, 2);
+  assert.equal(input.props["aria-controls"], list.props.id);
+  assert.equal(input.props["aria-activedescendant"], options[0].props.id);
+  const key = (key, extra = {}) => ({
+    key,
+    nativeEvent: {},
+    preventDefault() {},
+    ...extra,
+  });
+  input.props.onKeyDown(key("ArrowDown"));
+  view = editor.render();
+  assert.equal(
+    find(view, "gt-header-textarea").props["aria-activedescendant"],
+    options[1].props.id,
+  );
+  find(view, "gt-header-textarea").props.onKeyDown(
+    key("Enter", { nativeEvent: { isComposing: true } }),
+  );
+  assert.equal(selected, undefined);
+  find(view, "gt-header-textarea").props.onKeyDown(key("Enter"));
+  assert.equal(selected, "before @Alfred after");
+  assert.equal(forwardedKeys, 0);
+  assert.equal(find(editor.render(), "gt-mentions"), undefined);
+
+  find(editor.render(), "gt-header-textarea").props.onSelect({
+    currentTarget: textarea,
+  });
+  view = editor.render();
+  let prevented = false;
+  const option = React.Children.toArray(
+    find(view, "gt-mentions").props.children,
+  )[0];
+  option.props.onMouseDown({
+    preventDefault() {
+      prevented = true;
+    },
+  });
+  option.props.onClick();
+  assert.equal(prevented, true);
+  assert.equal(selected, "before @Alice after");
+  editor.unmount();
+});
+
+test("mention dismissal, modified Enter and distinct editor IDs preserve editor behavior", () => {
+  const values = [];
+  const props = {
+    value: "@a",
+    comments: [{ user: { login: "Alice" } }],
+    onValueChange: (value) => values.push(value),
+  };
+  const first = mount("components/comment-textarea.tsx", props);
+  const target = { value: "@a", selectionStart: 2, selectionEnd: 2 };
+  const open = (editor) => {
+    find(editor.render(), "gt-header-textarea").props.onSelect({
+      currentTarget: target,
+    });
+    return editor.render();
+  };
+  const a = open(first);
+  // Reuse the loaded component module, as React does for sibling editors,
+  // while giving the second instance its own hook state.
+  first.render(props, undefined, []);
+  const b = open(first);
+  assert.notEqual(
+    find(a, "gt-mentions").props.id,
+    find(b, "gt-mentions").props.id,
+  );
+  find(b, "gt-header-textarea").props.onKeyDown({
+    key: "Escape",
+    nativeEvent: {},
+    preventDefault() {},
+  });
+  assert.equal(find(first.render(), "gt-mentions"), undefined);
+  const view = open(first);
+  find(view, "gt-header-textarea").props.onKeyDown({
+    key: "Enter",
+    ctrlKey: true,
+    nativeEvent: {},
+    preventDefault() {},
+  });
+  assert.equal(values.length, 0);
+  for (const key of ["Tab", "ArrowDown", "ArrowUp"]) {
+    let prevented = false;
+    find(view, "gt-header-textarea").props.onKeyDown({
+      key,
+      shiftKey: true,
+      nativeEvent: {},
+      preventDefault() {
+        prevented = true;
+      },
+    });
+    assert.equal(prevented, false, `Shift+${key} keeps its native behavior`);
+    assert.equal(values.length, 0);
+  }
+  first.unmount();
+});
+
+test("completing an unchanged mention restores the caret without reopening suggestions", () => {
+  let selected;
+  const props = {
+    value: "@Alice suffix",
+    comments: [{ user: { login: "Alice" } }],
+    onValueChange: (value) => {
+      selected = value;
+    },
+  };
+  const editor = mount("components/comment-textarea.tsx", props);
+  let focused = 0;
+  let caret;
+  const target = {
+    value: props.value,
+    selectionStart: 2,
+    selectionEnd: 2,
+    focus() {
+      focused++;
+    },
+    setSelectionRange(start, end) {
+      caret = [start, end];
+      this.selectionStart = start;
+      this.selectionEnd = end;
+    },
+  };
+  const attach = (view) => find(view, "gt-header-textarea").ref(target);
+  let view = editor.render(props, attach);
+  find(view, "gt-header-textarea").props.onSelect({ currentTarget: target });
+  view = editor.render(props, attach);
+  find(view, "gt-header-textarea").props.onKeyDown({
+    key: "Enter",
+    nativeEvent: {},
+    preventDefault() {},
+  });
+  assert.equal(selected, props.value);
+  view = editor.render(props, attach);
+  assert.deepEqual(caret, [6, 6]);
+  assert.equal(focused, 1);
+  find(view, "gt-header-textarea").props.onSelect({ currentTarget: target });
+  assert.equal(find(editor.render(props, attach), "gt-mentions"), undefined);
+  editor.unmount();
+});
+
+test("all eight reaction controls expose exact counts, viewer states and content", () => {
+  const { REACTIONS, reactionsFromRest } = loadSource("utils/reactions.ts");
+  const reactions = reactionsFromRest();
+  REACTIONS.forEach((r, i) => {
+    reactions[r.content] = {
+      totalCount: 150 + i,
+      viewerHasReacted: i % 2 === 0,
+    };
+  });
+  const actions = [];
+  const props = {
+    reactions,
+    onReaction: (...args) => actions.push(args),
+  };
+  const comment = mount("components/reactions.tsx", props);
+  const buttons = React.Children.toArray(
+    find(comment.render(), "gt-comment-reactions").props.children,
+  ).filter((child) => child.props.className === "gt-comment-reaction");
+  assert.equal(buttons.length, 8);
+  buttons.forEach((button, i) => {
+    assert.equal(button.props["aria-pressed"], i % 2 === 0);
+    assert.match(button.props["aria-label"], new RegExp(String(150 + i)));
+    button.props.onClick();
+    assert.deepEqual(actions[i], [i % 2 !== 0, REACTIONS[i].content]);
+  });
+  comment.unmount();
+});
+
+test("reaction picker hides empty counts and offers all eight reactions in its menu", () => {
+  const { REACTIONS, reactionsFromRest } = loadSource("utils/reactions.ts");
+  const reactions = reactionsFromRest();
+  reactions.HEART = { totalCount: 1, viewerHasReacted: true };
+  const actions = [];
+  const props = { reactions, onReaction: (...args) => actions.push(args) };
+  const picker = mount("components/reactions.tsx", props, {
+    document: { addEventListener() {}, removeEventListener() {} },
+  });
+  let view = picker.render();
+  const chips = React.Children.toArray(view.props.children).filter(
+    (child) => child.props.className === "gt-comment-reaction",
+  );
+  assert.equal(chips.length, 1);
+  assert.equal(chips[0].props["data-reaction"], "HEART");
+  assert.equal(find(view, "gt-reaction-menu"), undefined);
+  const trigger = find(view, "gt-reaction-add");
+  assert.equal(trigger.props.type, "button");
+  assert.equal(trigger.props["aria-haspopup"], "menu");
+  assert.equal(trigger.props["aria-expanded"], false);
+  trigger.props.onClick();
+  view = picker.render();
+  assert.equal(find(view, "gt-reaction-add").props["aria-expanded"], true);
+  const menu = find(view, "gt-reaction-menu");
+  assert.equal(menu.props.role, "menu");
+  const options = React.Children.toArray(menu.props.children);
+  assert.equal(options.length, 8);
+  options.forEach((option, index) => {
+    assert.equal(option.props["data-reaction"], REACTIONS[index].content);
+    assert.equal(option.props.role, "menuitemcheckbox");
+    assert.equal(
+      option.props["aria-checked"],
+      REACTIONS[index].content === "HEART",
+    );
+  });
+  options
+    .find((option) => option.props["data-reaction"] === "HEART")
+    .props.onClick();
+  assert.deepEqual(actions.pop(), [false, "HEART"]);
+  assert.equal(find(picker.render(), "gt-reaction-menu"), undefined);
+  find(picker.render(), "gt-reaction-add").props.onClick();
+  const reopened = picker.render();
+  React.Children.toArray(
+    find(reopened, "gt-reaction-menu").props.children,
+  )[0].props.onClick();
+  assert.deepEqual(actions.pop(), [true, "THUMBS_UP"]);
+  const empty = picker.render({ ...props, reactions: reactionsFromRest() });
+  assert.equal(
+    React.Children.toArray(empty.props.children).filter(
+      (child) => child.props.className === "gt-comment-reaction",
+    ).length,
+    0,
+  );
+  picker.unmount();
+});
+
+test("horizontal reaction menu manages keyboard focus, outside clicks and cleanup", () => {
+  const listeners = new Set();
+  const document = {
+    addEventListener: (_type, listener) => listeners.add(listener),
+    removeEventListener: (_type, listener) => listeners.delete(listener),
+  };
+  const inside = {};
+  const focused = [];
+  const buttons = Array.from({ length: 8 }, (_, index) => ({
+    focus: () => focused.push(index),
+  }));
+  let triggerFocus = 0;
+  const props = {
+    reactions: loadSource("utils/reactions.ts").reactionsFromRest(),
+    onReaction() {},
+  };
+  const picker = mount("components/reactions.tsx", props, { document });
+  const attach = (view) => {
+    find(view, "gt-reaction-add").ref.current = { focus: () => triggerFocus++ };
+    find(view, "gt-reaction-picker").ref.current = {
+      contains: (target) => target === inside,
+    };
+    const menu = find(view, "gt-reaction-menu");
+    if (menu) menu.ref.current = { querySelectorAll: () => buttons };
+  };
+  const render = () => picker.render(props, attach);
+  const key = (key) => ({ key, preventDefault() {} });
+  let view = render();
+  find(view, "gt-reaction-add").props.onKeyDown(key("ArrowUp"));
+  view = render();
+  assert.equal(focused.at(-1), 7);
+  assert.equal(listeners.size, 1);
+  find(view, "gt-reaction-picker").props.onKeyDown(key("ArrowRight"));
+  view = render();
+  assert.equal(focused.at(-1), 0);
+  find(view, "gt-reaction-picker").props.onKeyDown(key("End"));
+  view = render();
+  assert.equal(focused.at(-1), 7);
+  for (const listener of listeners) listener({ target: inside });
+  assert.ok(find(render(), "gt-reaction-menu"));
+  assert.equal(listeners.size, 1);
+  find(view, "gt-reaction-picker").props.onKeyDown(key("Escape"));
+  assert.equal(find(render(), "gt-reaction-menu"), undefined);
+  assert.equal(triggerFocus, 1);
+  assert.equal(listeners.size, 0);
+  find(render(), "gt-reaction-add").props.onClick();
+  render();
+  for (const listener of listeners) listener({ target: {} });
+  assert.equal(find(render(), "gt-reaction-menu"), undefined);
+  assert.equal(triggerFocus, 1);
+  find(render(), "gt-reaction-add").props.onClick();
+  view = render();
+  let prevented = false;
+  find(view, "gt-reaction-picker").props.onKeyDown({
+    key: "Tab",
+    shiftKey: true,
+    preventDefault() {
+      prevented = true;
+    },
+  });
+  assert.equal(prevented, false);
+  find(view, "gt-reaction-picker").props.onBlur({
+    currentTarget: { contains: () => false },
+    relatedTarget: {},
+  });
+  assert.equal(find(render(), "gt-reaction-menu"), undefined);
+  find(render(), "gt-reaction-add").props.onClick();
+  render();
+  picker.unmount();
+  assert.equal(listeners.size, 0);
+});
+
+test("loading disables both reaction chips and menu choices", () => {
+  const reactions = loadSource("utils/reactions.ts").reactionsFromRest({
+    heart: 1,
+  });
+  let calls = 0;
+  const props = { reactions, onReaction: () => calls++ };
+  const picker = mount("components/reactions.tsx", props, {
+    document: { addEventListener() {}, removeEventListener() {} },
+  });
+  find(picker.render(), "gt-reaction-add").props.onClick();
+  const view = picker.render({ ...props, loading: true });
+  const chips = React.Children.toArray(view.props.children).filter(
+    (child) => child.props.className === "gt-comment-reaction",
+  );
+  assert.equal(find(view, "gt-reaction-add").props["aria-disabled"], true);
+  assert.equal(find(view, "gt-reaction-add").props.disabled, undefined);
+  assert.equal(chips[0].props.disabled, true);
+  chips[0].props.onClick();
+  for (const option of React.Children.toArray(
+    find(view, "gt-reaction-menu").props.children,
+  )) {
+    assert.equal(option.props.disabled, true);
+    option.props.onClick();
+  }
+  assert.equal(calls, 0);
+  picker.unmount();
+});
+
+test("removing the last reaction retains focus on the available picker trigger", () => {
+  const reactions = loadSource("utils/reactions.ts").reactionsFromRest();
+  reactions.HEART = { totalCount: 1, viewerHasReacted: true };
+  let focus;
+  const trigger = {
+    focus: () => {
+      focus = "trigger";
+    },
+  };
+  const actions = [];
+  const props = { reactions, onReaction: (...args) => actions.push(args) };
+  const picker = mount("components/reactions.tsx", props);
+  const attach = (view) => {
+    find(view, "gt-reaction-add").ref.current = trigger;
+  };
+  const view = picker.render(props, attach);
+  focus = "heart";
+  find(view, "gt-comment-reaction").props.onClick();
+  assert.equal(focus, "trigger");
+  assert.deepEqual(actions, [[false, "HEART"]]);
+  let next = picker.render({ ...props, loading: true }, attach);
+  assert.equal(find(next, "gt-reaction-add").props.disabled, undefined);
+  assert.equal(find(next, "gt-reaction-add").props["aria-disabled"], true);
+  find(next, "gt-reaction-add").props.onClick();
+  assert.equal(
+    find(
+      picker.render({ ...props, loading: true }, attach),
+      "gt-reaction-menu",
+    ),
+    undefined,
+  );
+  next = picker.render(
+    {
+      ...props,
+      reactions: loadSource("utils/reactions.ts").reactionsFromRest(),
+      loading: false,
+    },
+    attach,
+  );
+  assert.equal(find(next, "gt-comment-reaction"), undefined);
+  assert.equal(find(next, "gt-reaction-add").props["aria-disabled"], false);
+  assert.equal(focus, "trigger");
+  picker.unmount();
 });
 
 test("anonymous users can choose either comment sort direction from the popup", () => {

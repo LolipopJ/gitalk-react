@@ -62,7 +62,7 @@ export const resolveLanguage = (language: string = DEFAULT_LANG): Lang => {
 const getPolyglotInstance = (language: string = DEFAULT_LANG) => {
   const lang = resolveLanguage(language);
   return new Polyglot({
-    phrases: i18nMap[lang],
+    phrases: { ...en, ...i18nMap[lang] },
     locale: lang,
   });
 };

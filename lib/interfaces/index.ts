@@ -172,9 +172,14 @@ export type Comment = Pick<
     NonNullable<CommentDefine["user"]>,
     "avatar_url" | "login" | "html_url"
   >;
-  reactions: Pick<NonNullable<CommentDefine["reactions"]>, "heart">;
-  reactionsHeart: {
-    totalCount: number;
-    viewerHasReacted: boolean;
-  };
+  reactions: import("../utils/reactions").Reactions;
 };
+
+export interface PendingComment {
+  id: number;
+  body: string;
+  user: Comment["user"];
+  draftVersion: number;
+  status: "sending" | "failed";
+  error?: string;
+}

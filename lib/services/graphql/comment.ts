@@ -1,4 +1,5 @@
 import type { Comment, GitalkProps } from "../../interfaces";
+import type { ReactionGroup } from "../../utils/reactions";
 
 export interface IssueCommentsQLResponse {
   repository: {
@@ -23,7 +24,7 @@ export interface IssueCommentsQLResponse {
               bodyHTML: Comment["body_html"];
               createdAt: Comment["created_at"];
               resourcePath: Comment["html_url"];
-              reactions: Comment["reactionsHeart"];
+              reactionGroups: ReactionGroup[];
             })
           | null
         )[];
@@ -67,9 +68,10 @@ export const getIssueCommentsQL = ({
             bodyHTML
             createdAt
             resourcePath
-            reactions(first: 1, content: HEART) {
-              totalCount
+            reactionGroups {
+              content
               viewerHasReacted
+              reactors(first: 1) { totalCount }
             }
           }
         }
@@ -79,13 +81,14 @@ export const getIssueCommentsQL = ({
   `;
 };
 
-export const getCommentReactionMutationQL = (like: boolean): string => `
-mutation setCommentHeart($subjectId: ID!) {
-  reaction: ${like ? "addReaction" : "removeReaction"}(input: {subjectId: $subjectId, content: HEART}) {
+export const getCommentReactionMutationQL = (add: boolean): string => `
+mutation setCommentReaction($subjectId: ID!, $content: ReactionContent!) {
+  reaction: ${add ? "addReaction" : "removeReaction"}(input: {subjectId: $subjectId, content: $content}) {
     subject {
-      reactions(first: 1, content: HEART) {
-        totalCount
+      reactionGroups {
+        content
         viewerHasReacted
+        reactors(first: 1) { totalCount }
       }
     }
   }

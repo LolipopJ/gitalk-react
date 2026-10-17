@@ -8,6 +8,8 @@ import vm from "node:vm";
 import { RequestError } from "octokit";
 import ts from "typescript";
 
+import { loadSource } from "./helpers/source.mjs";
+
 // Run the component and the installed ahooks implementation with controlled
 // effects and network responses, without a browser or another test dependency.
 const mountGitalk = ({
@@ -178,6 +180,7 @@ const mountGitalk = ({
   });
   context.exports = {};
   context.require = (name) => {
+    if (name === "./utils/reactions") return loadSource("utils/reactions.ts");
     if (name === "react") return { __esModule: true, ...react, default: react };
     if (name === "ahooks") return { useRequest, useMemoizedFn };
     if (name === "classnames") return { __esModule: true, default: () => "gt" };
