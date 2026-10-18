@@ -47,6 +47,7 @@ import {
   reactionsFromGroups,
   reactionsFromRest,
 } from "./utils/reactions";
+import { readStored, removeStored, writeStored } from "./utils/storage";
 
 const isModernBrowser = supportsCSSVariables() && supportsES2020();
 
@@ -183,7 +184,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   );
 
   const [accessToken, setAccessToken] = useState<string | undefined>(
-    () => localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined,
+    () => readStored(ACCESS_TOKEN_KEY) ?? undefined,
   );
   const accessTokenRef = useRef(accessToken);
   const clearSession = useMemoizedFn((expiredToken?: string) => {
@@ -199,7 +200,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     cancelCreateIssueComment();
     cancelReactToComment();
     reactionRequestRef.current = null;
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    removeStored(ACCESS_TOKEN_KEY);
     setAccessToken(undefined);
     clearAccessTokenResult(undefined);
     setUser(undefined);
@@ -225,7 +226,7 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
       manual: true,
       ready: !!clientID && !!(clientSecret || proxy),
       onSuccess: (data) => {
-        localStorage.setItem(ACCESS_TOKEN_KEY, data);
+        writeStored(ACCESS_TOKEN_KEY, data);
         accessTokenRef.current = data;
         setAccessToken(data);
         logger.s(`Get access token successfully`);

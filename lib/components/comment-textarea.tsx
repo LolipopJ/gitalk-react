@@ -3,6 +3,7 @@ import type { Octokit } from "octokit";
 import React, {
   forwardRef,
   useContext,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -131,36 +132,43 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
       data: commentHtml = "",
       loading: getCommentHtmlLoading,
       run: runGetCommentHtml,
+      cancel: cancelGetCommentHtml,
     } = useRequest(
-      async (): Promise<string> => {
-        if (prevInputCommentRef.current === inputComment)
+      async (text: string): Promise<string> => {
+        if (prevInputCommentRef.current === text)
           return prevCommentHtmlRef.current;
 
         const getPreviewedHtmlRes = await octokit.request("POST /markdown", {
-          text: inputComment,
+          text,
         });
 
-        prevInputCommentRef.current = inputComment;
-
-        const _commentHtml = getPreviewedHtmlRes.data;
-        prevCommentHtmlRef.current = _commentHtml;
-        return _commentHtml;
+        return getPreviewedHtmlRes.data;
       },
       {
         manual: true,
+        onSuccess: (html, [text]) => {
+          prevInputCommentRef.current = text;
+          prevCommentHtmlRef.current = html;
+          setIsPreviewComment(true);
+        },
         onError: onPreviewError,
       },
     );
+
+    useEffect(() => {
+      cancelGetCommentHtml();
+      setIsPreviewComment(false);
+    }, [inputComment, cancelGetCommentHtml]);
 
     const onCommentInputPreview: React.MouseEventHandler<
       HTMLButtonElement
     > = () => {
       setMention(null);
-      if (isPreviewComment) {
+      if (isPreviewComment || getCommentHtmlLoading) {
+        cancelGetCommentHtml();
         setIsPreviewComment(false);
       } else {
-        setIsPreviewComment(true);
-        runGetCommentHtml();
+        runGetCommentHtml(inputComment);
       }
     };
 
@@ -291,9 +299,7 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
             className="gt-header-preview markdown-body"
             style={{ display: isPreviewComment ? undefined : "none" }}
             dangerouslySetInnerHTML={{
-              __html: getCommentHtmlLoading
-                ? "<span>Loading preview...</span>"
-                : commentHtml,
+              __html: commentHtml,
             }}
           />
           <div className="gt-header-controls">
@@ -316,7 +322,9 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
               className="gt-btn-preview gt-btn--secondary"
               onClick={onCommentInputPreview}
               text={
-                isPreviewComment ? polyglot.t("edit") : polyglot.t("preview")
+                isPreviewComment || getCommentHtmlLoading
+                  ? polyglot.t("edit")
+                  : polyglot.t("preview")
               }
               isLoading={getCommentHtmlLoading}
               disabled={false}

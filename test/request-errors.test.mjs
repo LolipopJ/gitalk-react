@@ -180,6 +180,10 @@ const mountGitalk = ({
   });
   context.exports = {};
   context.require = (name) => {
+    if (name === "./utils/storage")
+      return loadSource("utils/storage.ts", {
+        globals: { localStorage: context.localStorage },
+      });
     if (name === "./utils/reactions") return loadSource("utils/reactions.ts");
     if (name === "react") return { __esModule: true, ...react, default: react };
     if (name === "ahooks") return { useRequest, useMemoizedFn };
@@ -436,11 +440,120 @@ test("a rejected markdown preview reaches the preview error callback", async () 
     node.props?.className?.includes("gt-btn-preview"),
   ).props.onClick();
   await app.settle();
+  assert.equal(
+    findNode(app.tree(), (node) => node.type === "textarea").props.style
+      .display,
+    undefined,
+  );
   const failure = requestError(422, "Invalid markdown request");
   app.calls.find((call) => call.route === "POST /markdown").reject(failure);
   await app.settle();
   assert.equal(app.previewErrors.length, 1);
   assert.equal(app.previewErrors[0], failure);
+  assert.equal(
+    findNode(app.tree(), (node) => node.type === "textarea").props.style
+      .display,
+    undefined,
+  );
+  app.unmount();
+});
+
+const previewButton = (app) =>
+  findNode(app.tree(), (node) =>
+    node.props?.className?.includes("gt-btn-preview"),
+  ).props;
+const previewHtml = (app) =>
+  findNode(app.tree(), (node) =>
+    node.props?.className?.includes("gt-header-preview"),
+  ).props;
+
+test("preview opens only on success and a failed refresh keeps the draft editable", async () => {
+  const app = mountGitalk({ preview: true });
+  previewButton(app).onClick();
+  await app.settle();
+  assert.equal(previewHtml(app).style.display, "none");
+  app.calls[0].resolve({ data: "<p>First preview</p>" });
+  await app.settle();
+  assert.equal(previewHtml(app).style.display, undefined);
+  assert.equal(
+    previewHtml(app).dangerouslySetInnerHTML.__html,
+    "<p>First preview</p>",
+  );
+  previewButton(app).onClick();
+  await app.settle();
+  app.switchArticle({ value: "Changed draft" });
+  previewButton(app).onClick();
+  await app.settle();
+  app.calls[1].reject(new Error("Preview failed"));
+  await app.settle();
+  assert.equal(previewHtml(app).style.display, "none");
+  assert.equal(previewButton(app).text, "preview");
+  app.unmount();
+});
+
+for (const outcome of ["resolve", "reject"]) {
+  test(`closing a pending preview ignores its late ${outcome}`, async () => {
+    const app = mountGitalk({ preview: true });
+    previewButton(app).onClick();
+    await app.settle();
+    assert.equal(previewButton(app).text, "edit");
+    previewButton(app).onClick();
+    await app.settle();
+    app.calls[0][outcome](
+      outcome === "resolve" ? { data: "old" } : new Error("old error"),
+    );
+    await app.settle();
+    assert.equal(previewHtml(app).style.display, "none");
+    assert.equal(previewHtml(app).dangerouslySetInnerHTML.__html, "");
+    assert.equal(app.previewErrors.length, 0);
+    previewButton(app).onClick();
+    await app.settle();
+    assert.equal(
+      app.calls.length,
+      2,
+      "cancelled HTML must not populate the cache",
+    );
+    app.calls[1].resolve({ data: "new" });
+    await app.settle();
+    assert.equal(previewHtml(app).style.display, undefined);
+    assert.equal(previewHtml(app).dangerouslySetInnerHTML.__html, "new");
+    app.unmount();
+  });
+}
+
+test("a newer preview wins when an older cancelled render finishes last", async () => {
+  const app = mountGitalk({ preview: true });
+  previewButton(app).onClick();
+  await app.settle();
+  previewButton(app).onClick();
+  await app.settle();
+  app.switchArticle({ value: "New draft" });
+  previewButton(app).onClick();
+  await app.settle();
+  app.calls[1].resolve({ data: "new" });
+  await app.settle();
+  app.calls[0].resolve({ data: "old" });
+  await app.settle();
+  assert.equal(previewHtml(app).dangerouslySetInnerHTML.__html, "new");
+  previewButton(app).onClick();
+  await app.settle();
+  previewButton(app).onClick();
+  await app.settle();
+  assert.equal(app.calls.length, 2);
+  assert.equal(previewHtml(app).dangerouslySetInnerHTML.__html, "new");
+  app.unmount();
+});
+
+test("editing the draft invalidates a pending preview", async () => {
+  const app = mountGitalk({ preview: true });
+  previewButton(app).onClick();
+  await app.settle();
+  app.switchArticle({ value: "New draft" });
+  app.calls[0].resolve({ data: "old" });
+  await app.settle();
+  assert.equal(previewHtml(app).style.display, "none");
+  assert.equal(previewButton(app).isLoading, false);
+  assert.equal(previewButton(app).text, "preview");
   app.unmount();
 });
 

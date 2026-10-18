@@ -11,6 +11,7 @@ import ts from "typescript";
 import { loadSource } from "./helpers/source.mjs";
 
 const require = createRequire(import.meta.url);
+const cancelRequest = () => {};
 const { renderToStaticMarkup } = ReactDOMServer;
 const context = {
   polyglot: { t: (key) => key },
@@ -34,7 +35,9 @@ function load(path, react = React, globals = {}) {
     require: (name) => {
       if (name === "react") return react;
       if (name === "ahooks")
-        return globals.ahooks ?? { useRequest: () => ({}) };
+        return (
+          globals.ahooks ?? { useRequest: () => ({ cancel: cancelRequest }) }
+        );
       if (name === "../contexts/I18nContext") return {};
       if (name === "../constants")
         return {
@@ -434,11 +437,13 @@ test("inline editors preview their current Markdown and return to the same draft
   };
   const editor = mount("components/comment-textarea.tsx", props, {
     ahooks: {
-      useRequest: (service) => ({
+      useRequest: (service, options) => ({
         data: html,
-        run: () => {
-          pending = service().then((result) => {
+        cancel: cancelRequest,
+        run: (...params) => {
+          pending = service(...params).then((result) => {
             html = result;
+            options.onSuccess(result, params);
           });
         },
       }),
@@ -479,7 +484,12 @@ test("comment inputs resize on mount, growth, shrink and return from preview", (
       ...(editing ? { onCancel() {} } : {}),
     };
     const editor = mount("components/comment-textarea.tsx", props, {
-      ahooks: { useRequest: () => ({ run() {} }) },
+      ahooks: {
+        useRequest: (_service, options) => ({
+          cancel: cancelRequest,
+          run: (...params) => options.onSuccess("", params),
+        }),
+      },
     });
     let contentHeight = 140;
     let height;

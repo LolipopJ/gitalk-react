@@ -516,6 +516,7 @@ for (const response of [
 const loadGitalk = (
   consumeOAuthCallback = () => undefined,
   getAuthorizeUrl = () => "https://github.com/login/oauth/authorize",
+  browser = {},
 ) => {
   const requests = [];
   const states = [];
@@ -547,6 +548,11 @@ const loadGitalk = (
     pathname: "/article",
   };
   const storage = new Map();
+  const localStorage = browser.localStorage ?? {
+    getItem: (key) => storage.get(key),
+    setItem: (key, value) => storage.set(key, value),
+    removeItem: (key) => storage.delete(key),
+  };
   const hooks = {
     useCallback: (fn) => fn,
     useEffect: (fn) => effects.push(fn),
@@ -575,12 +581,10 @@ const loadGitalk = (
     window: { location },
     navigator: { language: "en" },
     document: { title: "Article", querySelector: () => null },
-    localStorage: {
-      getItem: (key) => storage.get(key),
-      setItem: (key, value) => storage.set(key, value),
-      removeItem: (key) => storage.delete(key),
-    },
+    localStorage,
     require: (path) => {
+      if (path === "./utils/storage")
+        return loadSource("utils/storage.ts", { globals: { localStorage } });
       if (path === "react")
         return {
           __esModule: true,
@@ -689,6 +693,113 @@ const findTextarea = (tree) => {
     if (result) return result;
   }
 };
+
+for (const operation of ["getItem", "setItem", "removeItem"]) {
+  test(`storage ${operation} failure does not interrupt the session lifecycle`, () => {
+    const localStorage = {
+      getItem: () => null,
+      setItem() {},
+      removeItem() {},
+      [operation]: () => {
+        throw new Error("Storage disabled");
+      },
+    };
+    const app = loadGitalk(undefined, undefined, { localStorage });
+    const props = {
+      clientID: "public",
+      proxy: "/oauth/access_token",
+      owner: "owner",
+      repo: "repo",
+      admin: ["owner"],
+    };
+    assert.doesNotThrow(() => app.Gitalk(props));
+    assert.equal(app.clients.at(-1).token, undefined);
+    assert.doesNotThrow(() => app.requests[0].options.onSuccess("fresh-token"));
+    app.Gitalk(props);
+    assert.equal(app.clients.at(-1).token, "fresh-token");
+    assert.doesNotThrow(() => app.clients.at(-1).onUnauthorized());
+    app.Gitalk(props);
+    assert.equal(app.clients.at(-1).token, undefined);
+    assert.equal(app.requests[1].options.ready, false);
+  });
+}
+
+test("nonce storage failure shows an authorization error without redirecting", () => {
+  const service = loadUserService(undefined, {
+    sessionStorage: {
+      setItem() {
+        throw new Error("Session storage disabled");
+      },
+    },
+  });
+  const app = loadGitalk(undefined, (...args) =>
+    service.getAuthorizeUrl(...args),
+  );
+  const props = {
+    clientID: "public",
+    proxy: "/oauth/access_token",
+    owner: "owner",
+    repo: "repo",
+    admin: ["owner"],
+  };
+  app.Gitalk(props);
+  app.requests[3].options.onSuccess({ number: 1, comments: 0 });
+  findTextarea(app.Gitalk(props)).props.onLogin();
+  assert.equal(app.location.href, "https://site.example/article");
+  assert.ok(
+    app.states.some((value) => /authorizing.*storage/i.test(String(value))),
+  );
+  assert.equal(app.requests[0].runs.length, 0);
+});
+
+for (const operation of ["getItem", "removeItem"]) {
+  test(`OAuth callback fails closed when nonce ${operation} fails`, () => {
+    const service = loadUserService(undefined, {
+      sessionStorage: {
+        length: 0,
+        getItem: () =>
+          JSON.stringify({
+            state: "nonce",
+            draft: "draft",
+            expiresAt: Date.now() + 10000,
+          }),
+        [operation]: () => {
+          throw new Error("Session storage disabled");
+        },
+      },
+    });
+    service.location.search = "?code=grant&state=nonce";
+    assert.throws(
+      () => service.consumeOAuthCallback("public", oauthScope),
+      /storage disabled/i,
+    );
+  });
+}
+
+for (const unavailable of ["missing", "blocked getter"]) {
+  test(`token storage tolerates ${unavailable} localStorage`, () => {
+    const context = { exports: {} };
+    if (unavailable === "blocked getter") {
+      Object.defineProperty(context, "localStorage", {
+        get() {
+          throw new Error("Browser policy denied storage");
+        },
+      });
+    }
+    const source = readFileSync(
+      new URL("../lib/utils/storage.ts", import.meta.url),
+      "utf8",
+    );
+    const { outputText } = ts.transpileModule(source, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS },
+    });
+    vm.runInNewContext(outputText, context);
+    const { readStored, writeStored, removeStored } = context.exports;
+    assert.equal(readStored("GT_ACCESS_TOKEN"), null);
+    assert.doesNotThrow(() => writeStored("GT_ACCESS_TOKEN", "token"));
+    assert.doesNotThrow(() => removeStored("GT_ACCESS_TOKEN"));
+  });
+}
 
 test("login preserves the current draft and full article scope for its callback", () => {
   const service = loadUserService();

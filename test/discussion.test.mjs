@@ -162,6 +162,10 @@ const mountGitalk = ({ authenticated = false, ...initialProps } = {}) => {
   });
   context.exports = {};
   context.require = (name) => {
+    if (name === "./utils/storage")
+      return loadSource("utils/storage.ts", {
+        globals: { localStorage: context.localStorage },
+      });
     if (name === "./utils/reactions") return loadSource("utils/reactions.ts");
     if (name === "react") return { __esModule: true, ...react, default: react };
     if (name === "ahooks") return { useRequest, useMemoizedFn };
