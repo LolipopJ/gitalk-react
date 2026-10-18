@@ -1,6 +1,6 @@
 {
   "name": "gitalk-react",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": false,
   "author": {
     "name": "LolipopJ",
@@ -13,7 +13,7 @@
   },
   "homepage": "https://lolipopj.github.io/gitalk-react",
   "license": "MIT",
-  "packageManager": "pnpm@12.11.2",
+  "packageManager": "pnpm@12.14.0",
   "type": "module",
   "files": [
     "dist/",
