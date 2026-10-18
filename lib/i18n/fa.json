@@ -1,4 +1,9 @@
 {
+  "admin": "مدیر",
+  "reply": "پاسخ",
+  "save": "ذخیره",
+  "cancel": "انصراف",
+  "comment-actions": "عملیات نظر",
   "init": "بارگزاری ...",
   "no-found-related": "%{link} مرتبط پیدا نشد.",
   "please-contact": "لطفاً با %{user} اطلاع دهید تا اضافه کند.",

@@ -33,9 +33,20 @@ const load = (filename) => {
   return module.exports;
 };
 
-const { default: i18n } = load(
+const { default: i18n, i18nMap } = load(
   fileURLToPath(new URL("../lib/i18n/index.ts", import.meta.url)),
 );
+
+test("comment menus, editing controls and administrator labels are translated in every locale", () => {
+  for (const [language, phrases] of Object.entries(i18nMap)) {
+    for (const key of ["admin", "reply", "save", "cancel", "comment-actions"]) {
+      assert.ok(phrases[key], `${language} must translate ${key}`);
+      assert.equal(i18n(language).t(key), phrases[key]);
+    }
+  }
+  assert.equal(i18n("zh-CN").t("admin"), "管理员");
+  assert.equal(i18n("zh-TW").t("admin"), "管理員");
+});
 
 test("regional language tags use the available base translation", () => {
   for (const [requested, expected] of [

@@ -11,7 +11,7 @@ import React, {
 import Github from "../assets/github.svg?raw";
 import Tip from "../assets/tip.svg?raw";
 import I18nContext from "../contexts/I18nContext";
-import type { Comment, User } from "../interfaces";
+import type { Comment } from "../interfaces";
 import {
   findMention,
   type Mention,
@@ -28,13 +28,14 @@ interface CommentTextareaProps extends React.DetailedHTMLProps<
 > {
   value: string;
   octokit: Octokit;
-  user?: User;
+  user?: Comment["user"];
   onLogin: () => void;
   onCreateComment: (comment: string) => Promise<void>;
   createCommentLoading: boolean;
   onPreviewError: (error: unknown) => void;
   comments: Comment[];
   onValueChange: (value: string) => void;
+  onCancel?: () => void;
 }
 
 let nextMentionId = 0;
@@ -51,6 +52,7 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
       onPreviewError,
       comments = [],
       onValueChange,
+      onCancel,
       onChange,
       onKeyDown,
       onSelect,
@@ -65,6 +67,12 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
     const [isPreviewComment, setIsPreviewComment] = useState<boolean>(false);
     const [listId] = useState(() => `gt-mentions-${++nextMentionId}`);
     const inputRef = useRef<HTMLTextAreaElement | null>(null);
+    useLayoutEffect(() => {
+      const textarea = inputRef.current;
+      if (!textarea || isPreviewComment) return;
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight + 2}px`;
+    }, [inputComment, isPreviewComment]);
     const composingRef = useRef(false);
     const caretRef = useRef<number | null>(null);
     const completedMentionRef = useRef<{ value: string; caret: number } | null>(
@@ -157,8 +165,11 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
     };
 
     return (
-      <div className="gt-header" key="header">
-        {user ? (
+      <div
+        className={onCancel ? "gt-header gt-comment-editor" : "gt-header"}
+        key="header"
+      >
+        {onCancel ? null : user ? (
           <Avatar
             className="gt-header-avatar"
             src={user.avatar_url}
@@ -178,6 +189,7 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
         <div className="gt-header-comment">
           <textarea
             aria-label={polyglot.t("comment")}
+            autoFocus={!!onCancel}
             {...restProps}
             ref={(element) => {
               inputRef.current = element;
@@ -285,18 +297,20 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
             }}
           />
           <div className="gt-header-controls">
-            <a
-              className="gt-header-controls-tip"
-              href="https://guides.github.com/features/mastering-markdown/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Svg
-                className="gt-ico-tip"
-                icon={Tip}
-                text={polyglot.t("support-markdown")}
-              />
-            </a>
+            {!onCancel && (
+              <a
+                className="gt-header-controls-tip"
+                href="https://guides.github.com/features/mastering-markdown/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Svg
+                  className="gt-ico-tip"
+                  icon={Tip}
+                  text={polyglot.t("support-markdown")}
+                />
+              </a>
+            )}
 
             <Button
               className="gt-btn-preview gt-btn--secondary"
@@ -308,6 +322,15 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
               disabled={false}
             />
 
+            {onCancel && (
+              <Button
+                className="gt-btn-cancel gt-btn--secondary"
+                onClick={onCancel}
+                text={polyglot.t("cancel")}
+                disabled={createCommentLoading}
+              />
+            )}
+
             {user ? (
               <Button
                 className="gt-btn-public"
@@ -315,9 +338,9 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
                   await onCreateComment(inputComment);
                   setIsPreviewComment(false);
                 }}
-                text={polyglot.t("comment")}
+                text={polyglot.t(onCancel ? "save" : "comment")}
                 isLoading={createCommentLoading}
-                disabled={createCommentLoading || !inputComment}
+                disabled={createCommentLoading || !inputComment.trim()}
               />
             ) : (
               <Button
@@ -332,5 +355,7 @@ const CommentTextarea = forwardRef<HTMLTextAreaElement, CommentTextareaProps>(
     );
   },
 );
+
+CommentTextarea.displayName = "CommentTextarea";
 
 export default CommentTextarea;

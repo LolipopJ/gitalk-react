@@ -1,4 +1,9 @@
 {
+  "admin": "Administrator",
+  "reply": "Odpowiedz",
+  "save": "Zapisz",
+  "cancel": "Anuluj",
+  "comment-actions": "Działania komentarza",
   "init": "Gitalking ...",
   "no-found-related": "Nie znaleziono powiązanego zgłoszenia: %{link}",
   "please-contact": "Skontaktuj się z %{user}, aby umożliwić komentowanie",

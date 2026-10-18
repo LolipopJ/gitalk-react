@@ -437,6 +437,193 @@ const commentPage = ({
   },
 });
 
+const editRoute = "PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}";
+
+const openEditableArticle = async () => {
+  const app = await openArticle({ authenticated: true });
+  const page = commentPage({
+    author: { login: "ADMIN", avatarUrl: "avatar", url: "" },
+    hearts: 5,
+  });
+  page.repository.issue.comments.nodes[0].body = "Original comment";
+  page.repository.issue.comments.nodes[0].bodyHTML = "<p>Original comment</p>";
+  app.calls.find((call) => call.route === "graphql").resolve(page);
+  await app.settle();
+  return app;
+};
+
+test("editing updates only the saved comment body and preserves reactions, counts and the composer", async () => {
+  const app = await openEditableArticle();
+  app.type("Unsent composer draft");
+  const list = app.component("comments-list");
+  assert.equal(list.showAdminLabel, true);
+  const editing = list.onEdit(list.comments[0], "Updated **comment**");
+  await app.settle();
+  assert.equal(app.component("comments-list").editLoading, true);
+  const request = app.calls.find((call) => call.route === editRoute);
+  assert.equal(request.params.owner, "owner");
+  assert.equal(request.params.repo, "repo");
+  assert.equal(request.params.comment_id, 9007199254740993n);
+  assert.equal(request.params.body, "Updated **comment**");
+  assert.match(request.params.headers.accept, /full/);
+  request.resolve({
+    data: {
+      body: request.params.body,
+      body_html: "<p>Updated <strong>comment</strong></p>",
+    },
+  });
+  await editing;
+  await app.settle();
+  const updated = app.component("comments-list");
+  assert.equal(updated.comments[0].body, "Updated **comment**");
+  assert.equal(
+    updated.comments[0].body_html,
+    "<p>Updated <strong>comment</strong></p>",
+  );
+  assert.equal(updated.comments[0].reactions.HEART.totalCount, 5);
+  assert.equal(updated.commentsCount, 1);
+  assert.equal(updated.editLoading, false);
+  assert.equal(
+    app.component("comment-textarea").value,
+    "Unsent composer draft",
+  );
+  assert.equal(app.createdComments.length, 0);
+  app.switchArticle({ showAdminLabel: false });
+  assert.equal(app.component("comments-list").showAdminLabel, false);
+  app.unmount();
+});
+
+test("failed edits preserve the original body and can be retried", async () => {
+  const app = await openEditableArticle();
+  const comment = app.component("comments-list").comments[0];
+  const editing = app.component("comments-list").onEdit(comment, "Updated");
+  const failed = assert.rejects(editing, /Save failed/);
+  app.calls
+    .find((call) => call.route === editRoute)
+    .reject(new Error("Save failed"));
+  await failed;
+  await app.settle();
+  assert.equal(
+    app.component("comments-list").comments[0].body,
+    "Original comment",
+  );
+  assert.equal(app.component("comments-list").editLoading, false);
+  const retry = app.component("comments-list").onEdit(comment, "Updated");
+  app.calls
+    .filter((call) => call.route === editRoute)
+    .at(-1)
+    .resolve({ data: { body: "Updated", body_html: "<p>Updated</p>" } });
+  await retry;
+  await app.settle();
+  assert.equal(app.component("comments-list").comments[0].body, "Updated");
+  app.unmount();
+});
+
+test("a newly submitted comment can be edited without reloading", async () => {
+  const app = await openEditableArticle();
+  app.type("New comment");
+  const creating = app.component("comment-textarea").onCreateComment();
+  app.calls
+    .find((call) => call.route === submitRoute)
+    .resolve({
+      status: 201,
+      data: {
+        id: 42,
+        node_id: "IC_new",
+        body: "New comment",
+        body_html: "<p>New comment</p>",
+        user: { login: "admin" },
+      },
+    });
+  await creating;
+  await app.settle();
+  const comment = app
+    .component("comments-list")
+    .comments.find((comment) => comment.id === 42);
+  const editing = app
+    .component("comments-list")
+    .onEdit(comment, "Edited new comment");
+  app.calls
+    .find((call) => call.route === editRoute)
+    .resolve({
+      data: {
+        body: "Edited new comment",
+        body_html: "<p>Edited new comment</p>",
+      },
+    });
+  await editing;
+  await app.settle();
+  assert.equal(
+    app.component("comments-list").comments.find((comment) => comment.id === 42)
+      .body,
+    "Edited new comment",
+  );
+  assert.equal(app.component("comments-list").commentsCount, 2);
+  assert.equal(app.createdComments.length, 1);
+  app.unmount();
+});
+
+test("an edit for the old article cannot replace the new article's comments", async () => {
+  const app = await openEditableArticle();
+  const list = app.component("comments-list");
+  const cancelled = assert.rejects(
+    list.onEdit(list.comments[0], "Old article edit"),
+    /cancelled|superseded/,
+  );
+  const editing = app.calls.find((call) => call.route === editRoute);
+  app.switchArticle({ number: 2 }, false);
+  editing.resolve({
+    data: { body: "Old article edit", body_html: "<p>Old article edit</p>" },
+  });
+  await cancelled;
+  await app.settle();
+  app.calls
+    .filter((call) => call.route === issueRoute)
+    .at(-1)
+    .resolve(issueResponse(2));
+  await app.settle();
+  const page = commentPage({ author: { login: "admin" } });
+  page.repository.issue.comments.nodes[0].body = "New article comment";
+  app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1)
+    .resolve(page);
+  await app.settle();
+  assert.equal(
+    app.component("comments-list").comments[0].body,
+    "New article comment",
+  );
+  app.unmount();
+});
+
+test("edits reject another author's comment and blank bodies before making a request", async () => {
+  const app = await openEditableArticle();
+  const comment = app.component("comments-list").comments[0];
+  await assert.rejects(
+    app.component("comments-list").onEdit(comment, "  "),
+    /empty/,
+  );
+  app.switchArticle({ number: 2 });
+  await app.settle();
+  app.calls
+    .filter((call) => call.route === issueRoute)
+    .at(-1)
+    .resolve(issueResponse(2));
+  await app.settle();
+  app.calls
+    .filter((call) => call.route === "graphql")
+    .at(-1)
+    .resolve(commentPage({ author: { login: "someone-else" } }));
+  await app.settle();
+  const other = app.component("comments-list").comments[0];
+  await assert.rejects(
+    app.component("comments-list").onEdit(other, "Updated"),
+    /own comments/,
+  );
+  assert.equal(app.calls.filter((call) => call.route === editRoute).length, 0);
+  app.unmount();
+});
+
 test("a deleted GraphQL author uses the configured user without losing the page", async () => {
   const defaultUser = { login: "deleted", avatar_url: "avatar", html_url: "" };
   const app = await openArticle({ authenticated: true, defaultUser });

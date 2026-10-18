@@ -1,4 +1,9 @@
 {
+  "admin": "Admin",
+  "reply": "Reply",
+  "save": "Save",
+  "cancel": "Cancel",
+  "comment-actions": "Comment actions",
   "sending": "Sending…",
   "send-failed": "Comment could not be sent",
   "retry": "Retry",

@@ -627,10 +627,21 @@ $gt-breakpoint-mobile: 480px;
         margin: em(12px) 0 0;
 
         &-tip {
+          display: flex;
+          align-items: center;
           margin-right: auto;
           font-size: em(14px);
           color: var(--gt-color-main);
           text-decoration: none;
+
+          .gt-ico-tip {
+            display: inline-flex;
+            align-items: center;
+
+            .gt-ico-text {
+              line-height: 1;
+            }
+          }
 
           @include mobile {
             display: none;
@@ -714,6 +725,9 @@ $gt-breakpoint-mobile: 480px;
       &-header {
         position: relative;
         display: flex;
+      flex-wrap: wrap;
+      gap: em(4px) 0;
+      align-items: center;
         margin-bottom: em(8px);
         font-size: em(14px);
       }
@@ -750,18 +764,85 @@ $gt-breakpoint-mobile: 480px;
       &-actions {
         display: flex;
         gap: em(12px);
+      align-items: center;
         margin-left: auto;
       }
 
-      &-like,
-      &-edit,
-      &-reply {
-        height: em(22px);
+    &-admin-label {
+      padding: 0 em(7px);
+      font-size: em(12px);
+      line-height: 1.6;
+      color: var(--gt-color-comment-txt);
+      white-space: nowrap;
+      border: 1px solid var(--gt-color-hr);
+      border-radius: em(12px);
+    }
 
-        &:hover {
-          cursor: pointer;
+    &-menu-root {
+      position: relative;
+    }
+
+    &-menu-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: em(28px);
+      height: em(24px);
+      color: var(--gt-color-comment-txt);
+      cursor: pointer;
+      border-radius: $gt-size-border-radius;
+
+      &:hover,
+      &[aria-expanded="true"] {
+        color: var(--gt-color-main);
+        background: var(--gt-color-input-bg);
+      }
+    }
+
+    &-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      z-index: 10;
+      min-width: em(140px);
+      padding: em(4px) 0;
+      margin-top: em(4px);
+      background: var(--gt-color-comment-bg);
+      border: 1px solid var(--gt-color-hr);
+      border-radius: $gt-size-border-radius;
+      box-shadow: 0 em(4px) em(12px) var(--gt-color-comment-shadow);
+
+      button {
+        display: block;
+        width: 100%;
+        padding: em(6px) em(16px);
+        color: var(--gt-color-text);
+        text-align: left;
+        white-space: nowrap;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+          color: var(--gt-color-comment-bg);
+          background: var(--gt-color-main);
+        }
+
+        &:disabled {
+          cursor: default;
+          opacity: 0.5;
+        }
         }
       }
+
+    &-editor {
+      .gt-header-comment {
+        margin-left: 0;
+      }
+
+      .gt-header-controls {
+        justify-content: flex-end;
+      }
+    }
 
       &-body {
         overflow: auto;

@@ -1,4 +1,9 @@
 {
+  "admin": "管理员",
+  "reply": "回复",
+  "save": "保存",
+  "cancel": "取消",
+  "comment-actions": "评论操作",
   "sending": "发送中…",
   "send-failed": "评论发送失败",
   "retry": "重试",

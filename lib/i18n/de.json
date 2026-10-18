@@ -1,4 +1,9 @@
 {
+  "admin": "Administrator",
+  "reply": "Antworten",
+  "save": "Speichern",
+  "cancel": "Abbrechen",
+  "comment-actions": "Kommentaraktionen",
   "init": "Gitalking ...",
   "no-found-related": "Zugehöriger %{link} nicht gefunden",
   "please-contact": "Bitte kontaktiere %{user} um den Kommentar zu initialisieren",

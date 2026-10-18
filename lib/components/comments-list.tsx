@@ -21,6 +21,11 @@ interface CommentItemProps
       | "reactionLoading"
       | "collapsedHeight"
       | "highlightAdminComment"
+      | "showAdminLabel"
+      | "octokit"
+      | "comments"
+      | "onEdit"
+      | "editLoading"
     >,
     Pick<GitalkProps, "admin"> {
   onReaction: (
@@ -42,7 +47,9 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
   const commentAuthorName = commentAuthor?.login;
   const isAuthor =
-    !!user && !!commentAuthorName && user.login === commentAuthorName;
+    !!user &&
+    !!commentAuthorName &&
+    user.login.toLowerCase() === commentAuthorName.toLowerCase();
   const isAdmin =
     !!commentAuthorName &&
     !!admin.find(
@@ -128,6 +135,7 @@ const CommentsList: React.FC<CommentsListProps> = (props) => {
             {...restCommentProps}
             key={comment.id.toString()}
             comment={comment}
+            comments={comments}
           />
         ))}
       </AnimatedComments>

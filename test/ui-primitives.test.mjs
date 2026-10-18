@@ -33,7 +33,8 @@ function load(path, react = React, globals = {}) {
     exports: module.exports,
     require: (name) => {
       if (name === "react") return react;
-      if (name === "ahooks") return { useRequest: () => ({}) };
+      if (name === "ahooks")
+        return globals.ahooks ?? { useRequest: () => ({}) };
       if (name === "../contexts/I18nContext") return {};
       if (name === "../constants")
         return {
@@ -53,6 +54,7 @@ function load(path, react = React, globals = {}) {
     Intl,
     URL,
     URLSearchParams,
+    document: { addEventListener() {}, removeEventListener() {} },
     ...globals,
   });
   return module.exports;
@@ -197,8 +199,10 @@ test("comment actions and expansion use named buttons and reflect like state", (
     view.ref.current = { clientHeight: 200, querySelector() {} };
   });
   const view = instance.render();
+  find(view, "gt-comment-menu-trigger").props.onClick();
+  const menuView = instance.render();
   for (const name of ["reply", "collapse"]) {
-    const button = find(view, `gt-comment-${name}`);
+    const button = find(menuView, `gt-comment-${name}`);
     assert.equal(button.type, "button");
     assert.equal(button.props.type, "button");
     assert.ok(button.props["aria-label"]);
@@ -210,7 +214,7 @@ test("comment actions and expansion use named buttons and reflect like state", (
   assert.equal(picker(view).props.reactions.HEART.viewerHasReacted, true);
   picker(view).props.onReaction(false, "HEART");
   assert.deepEqual(liked, [false, "HEART", comment]);
-  find(view, "gt-comment-reply").props.onClick();
+  find(menuView, "gt-comment-reply").props.onClick();
   assert.equal(replied, comment);
   find(view, "gt-comment-collapse").props.onClick();
   assert.equal(find(instance.render(), "gt-comment-collapse"), undefined);
@@ -224,6 +228,7 @@ test("the editor has a persistent accessible name and a named login button", () 
   const editor = mount("components/comment-textarea.tsx", { value: "Draft" });
   const view = editor.render();
   assert.equal(find(view, "gt-header-textarea").props["aria-label"], "comment");
+  assert.ok(find(view, "gt-header-controls-tip"));
   const login = find(view, "gt-avatar-github");
   assert.equal(login.type, "button");
   assert.equal(login.props.type, "button");
@@ -235,6 +240,293 @@ test("the editor has a persistent accessible name and a named login button", () 
     ).props["aria-label"],
     "Custom label",
   );
+});
+
+const editableComment = {
+  id: 1,
+  node_id: "IC_1",
+  body: "Original **comment**",
+  body_html: "<p>Original <strong>comment</strong></p>",
+  created_at: "2026-10-15T00:00:00Z",
+  html_url: "https://github.com/owner/repo/issues/1#issuecomment-1",
+  user: { login: "author" },
+  reactions: loadSource("utils/reactions.ts").reactionsFromRest(),
+};
+
+test("comment menu hides actions until opened and only offers Edit to the author", () => {
+  const props = { comment: editableComment, isAuthor: true, onReply() {} };
+  const row = mount("components/comment.tsx", props);
+  let view = row.render();
+  assert.equal(find(view, "gt-comment-edit"), undefined);
+  assert.equal(find(view, "gt-comment-reply"), undefined);
+  const trigger = find(view, "gt-comment-menu-trigger");
+  assert.equal(trigger.props["aria-expanded"], false);
+  trigger.props.onClick();
+  view = row.render();
+  assert.equal(find(view, "gt-comment-menu").props.role, "menu");
+  assert.equal(find(view, "gt-comment-edit").props.role, "menuitem");
+  assert.equal(find(view, "gt-comment-reply").props.role, "menuitem");
+  view = row.render({ ...props, isAuthor: false });
+  assert.equal(find(view, "gt-comment-edit"), undefined);
+  row.unmount();
+});
+
+test("administrator labels are shown by default and can be hidden independently of highlighting", () => {
+  const props = { comment: editableComment, isAdmin: true };
+  const row = mount("components/comment.tsx", props);
+  assert.equal(
+    find(row.render(), "gt-comment-admin-label").props.children,
+    "admin",
+  );
+  assert.equal(
+    find(
+      row.render({ ...props, showAdminLabel: false }),
+      "gt-comment-admin-label",
+    ),
+    undefined,
+  );
+  assert.equal(
+    find(row.render({ ...props, isAdmin: false }), "gt-comment-admin-label"),
+    undefined,
+  );
+  row.unmount();
+});
+
+test("inline editing saves the draft, cancels locally and retains failed edits", async () => {
+  const edits = [];
+  const props = {
+    comment: editableComment,
+    isAuthor: true,
+    onEdit: async (...args) => edits.push(args),
+  };
+  const row = mount("components/comment.tsx", props);
+  const editor = (view) =>
+    React.Children.toArray(
+      find(view, "gt-comment-content").props.children,
+    ).find((child) => child.type?.displayName === "CommentTextarea");
+  const reactions = (view) =>
+    React.Children.toArray(
+      find(view, "gt-comment-content").props.children,
+    ).find((child) => child.type?.name === "Reactions");
+  const open = (next = props) => {
+    find(row.render(next), "gt-comment-menu-trigger").props.onClick();
+    find(row.render(next), "gt-comment-edit").props.onClick();
+    return editor(row.render(next));
+  };
+  assert.ok(reactions(row.render()));
+  let input = open();
+  assert.equal(reactions(row.render()), undefined);
+  assert.equal(input.props.value, editableComment.body);
+  input.props.onValueChange("Updated comment");
+  input = editor(row.render());
+  assert.equal(input.props.value, "Updated comment");
+  await input.props.onCreateComment("Updated comment");
+  assert.deepEqual(edits, [[editableComment, "Updated comment"]]);
+  assert.equal(editor(row.render()), undefined);
+  assert.ok(reactions(row.render()));
+  input = open();
+  input.props.onValueChange("Discard this");
+  editor(row.render()).props.onCancel();
+  assert.equal(editor(row.render()), undefined);
+  assert.ok(reactions(row.render()));
+  const failed = {
+    ...props,
+    onEdit: async () => {
+      throw new Error("Save failed");
+    },
+  };
+  input = open(failed);
+  input.props.onValueChange("Keep this draft");
+  await editor(row.render(failed)).props.onCreateComment("Keep this draft");
+  assert.equal(editor(row.render(failed)).props.value, "Keep this draft");
+  assert.match(
+    find(row.render(failed), "gt-comment-edit-error").props.children,
+    /Save failed/,
+  );
+  assert.equal(editor(row.render({ ...failed, isAuthor: false })), undefined);
+  row.unmount();
+});
+
+test("edit controls reuse preview and expose Save and Cancel without a second avatar", () => {
+  const editor = mount("components/comment-textarea.tsx", {
+    value: "Draft",
+    user: editableComment.user,
+    onCancel() {},
+  });
+  const view = editor.render();
+  assert.equal(find(view, "gt-btn-public").props.text, "save");
+  assert.equal(find(view, "gt-btn-cancel").props.text, "cancel");
+  assert.ok(find(view, "gt-btn-preview"));
+  assert.equal(find(view, "gt-header-controls-tip"), undefined);
+  assert.equal(find(view, "gt-header-avatar"), undefined);
+  assert.equal(find(view, "gt-header-textarea").props.autoFocus, true);
+  editor.unmount();
+});
+
+test("comment menus manage keyboard focus, outside clicks and listener cleanup", () => {
+  const listeners = new Set();
+  const document = {
+    addEventListener: (_type, callback) => listeners.add(callback),
+    removeEventListener: (_type, callback) => listeners.delete(callback),
+  };
+  let triggerFocus = 0;
+  const focused = [];
+  const buttons = [0, 1].map((index) => ({ focus: () => focused.push(index) }));
+  const inside = {};
+  const props = { comment: editableComment, isAuthor: true, onReply() {} };
+  const row = mount("components/comment.tsx", props, { document });
+  const attach = (view) => {
+    find(view, "gt-comment-menu-trigger").ref.current = {
+      focus: () => triggerFocus++,
+    };
+    find(view, "gt-comment-menu-root").ref.current = {
+      contains: (target) => target === inside,
+    };
+    const menu = find(view, "gt-comment-menu");
+    if (menu) menu.ref.current = { querySelectorAll: () => buttons };
+  };
+  const render = () => row.render(props, attach);
+  const key = (key, target = buttons[0]) => ({
+    key,
+    target,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+  find(render(), "gt-comment-menu-trigger").props.onKeyDown(key("ArrowUp"));
+  let view = render();
+  assert.equal(focused.at(-1), 1);
+  assert.equal(listeners.size, 1);
+  find(view, "gt-comment-menu-root").props.onKeyDown(key("Home"));
+  assert.equal(focused.at(-1), 0);
+  find(view, "gt-comment-menu-root").props.onKeyDown(key("ArrowDown"));
+  assert.equal(focused.at(-1), 1);
+  for (const listener of listeners) listener({ target: inside });
+  assert.ok(find(render(), "gt-comment-menu"));
+  find(view, "gt-comment-menu-root").props.onKeyDown(key("Escape"));
+  assert.equal(find(render(), "gt-comment-menu"), undefined);
+  assert.equal(triggerFocus, 1);
+  assert.equal(listeners.size, 0);
+  find(render(), "gt-comment-menu-trigger").props.onClick();
+  render();
+  for (const listener of listeners) listener({ target: {} });
+  assert.equal(find(render(), "gt-comment-menu"), undefined);
+  find(render(), "gt-comment-menu-trigger").props.onClick();
+  render();
+  row.unmount();
+  assert.equal(listeners.size, 0);
+});
+
+test("inline editors preview their current Markdown and return to the same draft", async () => {
+  const requests = [];
+  let html = "";
+  let pending;
+  const props = {
+    value: "Original **draft**",
+    user: editableComment.user,
+    onCancel() {},
+    onPreviewError() {},
+    octokit: {
+      request: async (route, params) => {
+        requests.push({ route, params });
+        return { data: `<p>${params.text}</p>` };
+      },
+    },
+  };
+  const editor = mount("components/comment-textarea.tsx", props, {
+    ahooks: {
+      useRequest: (service) => ({
+        data: html,
+        run: () => {
+          pending = service().then((result) => {
+            html = result;
+          });
+        },
+      }),
+    },
+  });
+  find(editor.render(), "gt-btn-preview").props.onClick();
+  await pending;
+  let view = editor.render();
+  assert.equal(requests[0].route, "POST /markdown");
+  assert.equal(find(view, "gt-header-controls-tip"), undefined);
+  assert.equal(requests[0].params.text, props.value);
+  assert.equal(
+    find(view, "gt-header-preview").props.dangerouslySetInnerHTML.__html,
+    `<p>${props.value}</p>`,
+  );
+  assert.equal(find(view, "gt-header-textarea").props.style.display, "none");
+  find(view, "gt-btn-preview").props.onClick();
+  assert.equal(
+    find(editor.render(), "gt-header-textarea").props.value,
+    props.value,
+  );
+  const changed = { ...props, value: "Changed draft" };
+  find(editor.render(changed), "gt-btn-preview").props.onClick();
+  await pending;
+  view = editor.render(changed);
+  assert.equal(requests[1].params.text, changed.value);
+  assert.equal(
+    find(view, "gt-header-preview").props.dangerouslySetInnerHTML.__html,
+    "<p>Changed draft</p>",
+  );
+  editor.unmount();
+});
+
+test("comment inputs resize on mount, growth, shrink and return from preview", () => {
+  for (const editing of [false, true]) {
+    const props = {
+      value: "Existing\nmultiline\ncomment",
+      ...(editing ? { onCancel() {} } : {}),
+    };
+    const editor = mount("components/comment-textarea.tsx", props, {
+      ahooks: { useRequest: () => ({ run() {} }) },
+    });
+    let contentHeight = 140;
+    let height;
+    const measurements = [];
+    const textarea = {
+      style: {
+        get height() {
+          return height;
+        },
+        set height(value) {
+          height = value;
+        },
+      },
+      get scrollHeight() {
+        measurements.push(height);
+        return contentHeight;
+      },
+    };
+    const attach = (view) => find(view, "gt-header-textarea").ref(textarea);
+    const render = (next = props) => editor.render(next, attach);
+    render();
+    assert.equal(height, "142px", "existing content is measured on mount");
+    contentHeight = 800;
+    render({ ...props, value: "Longer comment" });
+    assert.equal(
+      height,
+      "802px",
+      "CSS continues to enforce the shared maximum",
+    );
+    contentHeight = 60;
+    render({ ...props, value: "Short" });
+    assert.equal(height, "62px", "deleting content shrinks the textarea");
+    find(render(), "gt-btn-preview").props.onClick();
+    contentHeight = 0;
+    render();
+    assert.equal(height, "62px", "hidden textareas are not measured");
+    contentHeight = 160;
+    find(render(), "gt-btn-preview").props.onClick();
+    render();
+    assert.equal(
+      height,
+      "162px",
+      "returning from preview measures visible content",
+    );
+    assert.ok(measurements.every((value) => value === "auto"));
+    editor.unmount();
+  }
 });
 
 test("mention list supports caret selection, keyboard navigation, IME and mouse selection", () => {
@@ -370,6 +662,8 @@ test("completing an unchanged mention restores the caret without reopening sugge
   let caret;
   const target = {
     value: props.value,
+    style: {},
+    scrollHeight: 80,
     selectionStart: 2,
     selectionEnd: 2,
     focus() {

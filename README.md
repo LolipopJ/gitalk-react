@@ -246,9 +246,13 @@ The default user used when the comment user does not exist.
 
 When the height of the comment exceeds `${collapsedHeight}px`, it will automatically collapse to `${collapsedHeight}px`.
 
-### highlightAdminComment `boolean = true`
+### highlightAdminComment `boolean = false`
 
 Whether to highlight comments published by administrators, which have additional shadow effects.
+
+### showAdminLabel `boolean = true`
+
+Whether to show the translated administrator label beside the comment menu for users in `admin`. This is independent of `highlightAdminComment`.
 
 ### updateCountCallback `(count: number) => void`
 

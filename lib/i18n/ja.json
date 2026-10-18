@@ -1,4 +1,9 @@
 {
+  "admin": "管理者",
+  "reply": "返信",
+  "save": "保存",
+  "cancel": "キャンセル",
+  "comment-actions": "コメント操作",
   "init": "Gitalk を読み込んでいます...",
   "no-found-related": "%{link} に関連するものが見当たりません",
   "please-contact": "コメントを初期化するために %{user} に連絡してください",

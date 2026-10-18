@@ -86,7 +86,8 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     defaultUser: propsDefaultUser,
     defaultAuthor: propsDefaultAuthor,
     collapsedHeight: propsCollapsedHeight,
-    highlightAdminComment = true,
+    highlightAdminComment = false,
+    showAdminLabel = true,
     updateCountCallback,
     onCreateIssue,
     onCreateComment,
@@ -793,6 +794,50 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
   }, [commentsCount, updateCountCallback]);
 
   const {
+    loading: editCommentLoading,
+    runAsync: editComment,
+    cancel: cancelEditComment,
+  } = useRequest(
+    async (comment: CommentType, body: string) => {
+      const target = comments
+        .concat(localComments)
+        .find((item) => item.id === comment.id);
+      if (
+        !user ||
+        !target ||
+        target.user.login.toLowerCase() !== user.login.toLowerCase()
+      )
+        throw new Error("Only your own comments can be edited.");
+      if (!body.trim()) throw new Error("A comment cannot be empty.");
+      const { data } = await octokit.request(
+        "PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}",
+        {
+          owner,
+          repo,
+          comment_id: target.id,
+          body,
+          headers: { accept: "application/vnd.github.v3.full+json" },
+        },
+      );
+      return { id: target.id, body: data.body, body_html: data.body_html };
+    },
+    {
+      manual: true,
+      onSuccess: (updated) => {
+        const update = (comment: CommentType): CommentType =>
+          comment.id === updated.id ? { ...comment, ...updated } : comment;
+        setComments((previous) => previous.map(update));
+        setLocalComments((previous) => previous.map(update));
+      },
+    },
+  );
+
+  useLayoutEffect(
+    () => () => cancelEditComment(),
+    [issueScope, accessToken, cancelEditComment],
+  );
+
+  const {
     loading: reactionLoading,
     runAsync: runReactToComment,
     cancel: cancelReactToComment,
@@ -911,14 +956,6 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
     if (!distractionFreeMode) return e.preventDefault();
     setIsInputFocused(false);
   };
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = `${textarea.scrollHeight + 2}px`;
-    }
-  }, [inputComment]);
 
   const onCommentInputKeyDown: React.KeyboardEventHandler<
     HTMLTextAreaElement
@@ -1050,6 +1087,12 @@ const Gitalk: React.FC<GitalkProps> = (props) => {
                 createCommentLoading={createIssueCommentLoading}
                 collapsedHeight={collapsedHeight}
                 highlightAdminComment={highlightAdminComment}
+                showAdminLabel={showAdminLabel}
+                octokit={octokit}
+                onEdit={async (comment, body) => {
+                  await editComment(comment, body);
+                }}
+                editLoading={editCommentLoading}
               />
             </>
           ) : (

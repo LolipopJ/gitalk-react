@@ -137,6 +137,12 @@ export interface GitalkProps extends Omit<
    */
   highlightAdminComment?: boolean;
   /**
+   * Whether to show the administrator label on comments by admin users.
+   *
+   * @default true
+   */
+  showAdminLabel?: boolean;
+  /**
    * Callback method invoked when updating the number of comments.
    *
    * @param count comments number

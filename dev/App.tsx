@@ -412,13 +412,26 @@ const App = () => {
               <input
                 type="checkbox"
                 name="highlightAdminComment"
-                defaultChecked={options.highlightAdminComment ?? true}
+                defaultChecked={options.highlightAdminComment ?? false}
                 onChange={(e) => {
                   e.persist();
                   setOptions((prev) => ({
                     ...prev,
                     highlightAdminComment: Boolean(e.target.checked),
                   }));
+                }}
+              />
+            </div>
+            <div>
+              <label htmlFor="showAdminLabel">Show admin labels</label>
+              <input
+                id="showAdminLabel"
+                type="checkbox"
+                name="showAdminLabel"
+                defaultChecked={options.showAdminLabel ?? true}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setOptions((prev) => ({ ...prev, showAdminLabel: checked }));
                 }}
               />
             </div>

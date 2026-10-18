@@ -246,9 +246,13 @@ Gitalk React 使用的语言。
 
 当评论的高度大于 `${collapsedHeight}px` 时，自动折叠到 `${collapsedHeight}px`。
 
-### highlightAdminComment `boolean = true`
+### highlightAdminComment `boolean = false`
 
 是否高亮管理员发表的评论，高亮的评论具有额外的阴影效果。
+
+### showAdminLabel `boolean = true`
+
+是否在 `admin` 用户的评论菜单左侧显示国际化的“管理员”标签，与 `highlightAdminComment` 独立控制。
 
 ### updateCountCallback `(count: number) => void`
 

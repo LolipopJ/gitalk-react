@@ -1,4 +1,9 @@
 {
+  "admin": "Administrador",
+  "reply": "Responder",
+  "save": "Salvar",
+  "cancel": "Cancelar",
+  "comment-actions": "Ações do comentário",
   "init": "Carregando Gitalk ...",
   "no-found-related": "Não foi encontrado %{link} relacionado para comentar",
   "please-contact": "Por favor contate %{user} para inicializar o comentário",
